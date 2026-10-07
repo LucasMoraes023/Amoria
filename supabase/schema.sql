@@ -216,7 +216,9 @@ begin
 end $$;
 
 -- ===== ETAPA 4: SÓ PAGAMENTO POR CRIAÇÃO (sem plano grátis nem premium) =====
+drop trigger if exists t_limit on public.experiences;
 create or replace function public.limit_exp() returns trigger language plpgsql as $$ begin return new; end $$;
+create trigger t_limit before insert on public.experiences for each row execute function public.limit_exp();
 alter table public.payments add column if not exists payer_email text;
 update public.settings set value=jsonb_set(value,'{price_cents}',to_jsonb(greatest(coalesce((value->>'price_cents')::int,0),100))) where key='billing';
 create or replace function public.get_experience(p_slug text) returns jsonb language plpgsql security definer set search_path=public as $$

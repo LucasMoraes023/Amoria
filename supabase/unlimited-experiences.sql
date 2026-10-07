@@ -1,5 +1,6 @@
 -- Run this once in the Supabase SQL Editor for an existing AMORIA project.
 -- New experiences have no count limit; each stays private until individually approved.
+drop trigger if exists t_limit on public.experiences;
 create or replace function public.limit_exp()
 returns trigger
 language plpgsql
@@ -9,6 +10,7 @@ as $$
 begin
   return new;
 end $$;
+create trigger t_limit before insert on public.experiences for each row execute function public.limit_exp();
 
 create or replace function public.get_experience(p_slug text)
 returns jsonb
