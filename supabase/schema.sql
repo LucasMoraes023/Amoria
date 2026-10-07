@@ -73,8 +73,8 @@ create policy ph_ins on storage.objects for insert to authenticated with check (
 create policy ph_del on storage.objects for delete to authenticated using (bucket_id='photos' and ((storage.foldername(name))[1]=auth.uid()::text or public.is_admin()));
 
 -- ===== ETAPA 2 (se você já rodou a etapa 1, rode apenas daqui para baixo) =====
+-- Estruturas de planos antigas são mantidas para compatibilidade, sem opções ativas.
 create table public.plans(id text primary key, name text not null, max_experiences int not null, max_photos int not null, price_cents int not null default 0);
-insert into public.plans values ('free','Gratuito',5,6,0),('premium','Premium',1000000,30,1990) on conflict do nothing;
 create table public.subscriptions(id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, plan_id text not null references public.plans(id), status text not null default 'active', provider text, provider_ref text, started_at timestamptz not null default now(), ends_at timestamptz);
 create table public.settings(key text primary key, value jsonb not null);
 insert into public.settings values ('themes','{}') on conflict do nothing;
