@@ -16,11 +16,21 @@ A autenticação é obrigatória antes de acessar a página inicial ou criar exp
 ## 1. Supabase
 1. supabase.com > New project.
 2. SQL Editor > cole **todo** o `supabase/schema.sql` > Run. (Se já rodou antes, rode só os blocos das etapas novas: ETAPA 3 e ETAPA 4.)
-3. Authentication > URL Configuration: coloque o endereço do Netlify em Site URL e Redirect URLs.
-4. Project Settings > API: copie a **Project URL** e a chave **anon public**.
+3. Para habilitar vídeos, abra `supabase/video-support.sql` no SQL Editor e execute-o uma vez. Isso adiciona um bucket separado e não altera as experiências existentes.
+4. Authentication > URL Configuration: coloque o endereço do Netlify em Site URL e Redirect URLs.
+5. Project Settings > API: copie a **Project URL** e a chave **anon public**.
+
+## Recursos de criação
+- O editor oferece modelos de apresentação, apresentação automática de fotos e uma biblioteca de frases prontas.
+- Vídeos: até 3 arquivos MP4 ou WebM de até 25 MB cada. Execute a migração indicada acima uma vez para criar o bucket isolado de vídeos.
+- Presente digital: mensagem opcional e link externo seguro (HTTP/HTTPS).
+- QR Code personalizado é opcional: o cliente pode escolher cores e texto de moldura com prévia antes de publicar. Se selecionado, soma-se uma única vez R$ 6,99 ao preço normal por criação; o PIX mostra o total junto. O QR estilizado é disponibilizado após a liberação normal do pagamento.
+- Os novos dados de experiência são armazenados no conteúdo existente em JSON, sem recriar nem alterar tabelas. Experiências já publicadas mantêm os padrões atuais.
 
 ### Atualizar um projeto já existente
 Se o site mostrar "Limite do seu plano atingido" ao criar outra experiência, no SQL Editor do Supabase abra e execute uma vez o arquivo [`supabase/unlimited-experiences.sql`](./supabase/unlimited-experiences.sql). A atualização remove o limite do banco e mantém a proteção: cada experiência nova fica sem link público até você aprovar o pagamento dela em **Admin > Experiências > Liberar**. O link e o QR Code de compartilhamento só aparecem depois da liberação. O QR Code PIX para pagamento continua disponível antes disso.
+
+Para adicionar suporte a vídeos sem recriar o banco nem alterar experiências existentes, execute uma vez [`supabase/video-support.sql`](./supabase/video-support.sql) no SQL Editor. Cada experiência pode incluir até 3 vídeos MP4 ou WebM, de até 25 MB cada.
 
 ## 2. config.js
 `window.AMORIA={url:"https://xxxx.supabase.co",key:"SUA_CHAVE_ANON"};`
