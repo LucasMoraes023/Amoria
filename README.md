@@ -1,49 +1,39 @@
-# AMORIA — Netlify + Supabase + cobrança PIX
+# AMORIA — Netlify + Supabase, pagamento por criação (PIX manual com QR Code)
 App criado por Lucas Moraes.
 
-Criar e visualizar é grátis. O **link e o QR Code só são liberados depois do pagamento** (PIX via Mercado Pago, dinheiro direto na SUA conta). O bloqueio é feito no servidor (Supabase), não só na tela.
+Não existe plano grátis nem Premium: **cada criação é paga**. O criador monta e visualiza, mas o **link e o QR Code só são liberados depois do pagamento**. O bloqueio é feito no servidor (Supabase), não só na tela.
+
+## Como funciona a cobrança
+1. A pessoa cria a surpresa e toca em publicar.
+2. Aparece o **QR Code PIX** (com o valor já preenchido) e o "copia e cola".
+3. Ela paga e toca em **Enviar comprovante no WhatsApp** (abre a conversa com você).
+4. Você confere no seu banco e libera em **Admin > Experiências > Liberar**.
+5. A tela dela atualiza sozinha e mostra o link e o QR Code (com botões para enviar ao próprio WhatsApp ou e-mail).
 
 ## 1. Supabase
-1. supabase.com > New project (Free).
-2. SQL Editor > cole **todo** o `supabase/schema.sql` > Run. (Se já tinha rodado as etapas 1 e 2, rode só o bloco "ETAPA 3".)
-3. Authentication > URL Configuration: coloque o endereço final do Netlify em Site URL e Redirect URLs.
-4. Project Settings > API: copie **Project URL**, **anon public** e **service_role** (esta última é SECRETA: nunca vai para o `config.js`).
+1. supabase.com > New project.
+2. SQL Editor > cole **todo** o `supabase/schema.sql` > Run. (Se já rodou antes, rode só os blocos das etapas novas: ETAPA 3 e ETAPA 4.)
+3. Authentication > URL Configuration: coloque o endereço do Netlify em Site URL e Redirect URLs.
+4. Project Settings > API: copie a **Project URL** e a chave **anon public**.
 
 ## 2. config.js
 `window.AMORIA={url:"https://xxxx.supabase.co",key:"SUA_CHAVE_ANON"};`
 
-## 3. Mercado Pago (PIX automático)
-1. mercadopago.com.br/developers > Suas integrações > Criar aplicação.
-2. Copie o **Access Token de produção**.
-3. Não precisa configurar webhook à mão: o app já envia a URL em cada cobrança.
+## 3. Netlify
+Importe o repositório do GitHub. Build command vazio, publish directory `.`. **Não precisa de variáveis de ambiente.**
 
-## 4. Netlify (com Functions)
-As Functions (`netlify/functions`) precisam de deploy por **GitHub** (recomendado) ou **Netlify CLI** (`netlify deploy --prod`). O arrastar-e-soltar pode não publicar as Functions; nesse caso funciona o modo manual abaixo.
-Site settings > Environment variables:
-- `SUPABASE_URL` = Project URL
-- `SUPABASE_SERVICE_ROLE_KEY` = chave service_role
-- `MP_ACCESS_TOKEN` = Access Token do Mercado Pago
-Faça um novo deploy depois de salvar as variáveis.
-
-## 5. Virar administrador
+## 4. Virar administrador
 Crie sua conta no site e rode no SQL Editor:
 `update public.profiles set role='admin' where id=(select id from auth.users where email='SEU@EMAIL.COM');`
 
-## 6. Painel ADM > Ajustes > Cobrança
-- **Preço por liberação** (R$). Coloque 0 para deixar tudo grátis.
-- **Chave PIX e WhatsApp** (modo manual): se o PIX automático falhar ou as Functions não estiverem no ar, o cliente vê sua chave, paga e envia o comprovante pelo WhatsApp. Você confere e clica **Liberar** em Painel ADM > Experiências.
-- Resumo mostra pagamentos aprovados e receita.
-- Contas Premium e admin não pagam por experiência.
-
-## Novidades de apresentação
-- **Modo cinema**: abertura com fotos em tela cheia (zoom suave) e frases animadas; dá para pular.
-- Galerias: carrossel, **polaroid** e **mosaico**. Barra de progresso na leitura.
-- Novos temas (Ouro real, Neon), efeitos (confete, neve, borboletas, rosas) e tipos (amizade, agradecimento, desculpas, mãe).
-- Créditos "App criado por Lucas Moraes" no site, no fim de cada surpresa e no QR para impressão.
+## 5. Admin > Ajustes > Cobrança
+- **Preço por criação** (mínimo R$ 1,00)
+- **Chave PIX** (CPF só números, e-mail, celular com +55 ou chave aleatória)
+- **Nome do recebedor** e **Cidade** (como no seu banco)
+- **WhatsApp** (com DDD): é para ele que a pessoa envia o comprovante. Sem isso, ela não tem como falar com você.
 
 ## Avisos
-- Sem Supabase (config.js vazio) o app roda em modo local e **não cobra**: a cobrança só existe com Supabase.
-- Links antigos em formato longo (`#/amor/P....`) deixam de abrir quando a cobrança está ligada; use os links curtos novos.
+- Sem Supabase (config.js vazio) o app roda em modo local e **não cobra**.
 - Projetos Free do Supabase pausam após 7 dias sem uso.
-- A chave PIX digitada no painel fica legível pelo site (é a que o cliente precisa ver). Nunca coloque segredos ali.
+- A chave PIX e o WhatsApp ficam visíveis no site (o cliente precisa deles). Nunca coloque segredos nesses campos.
 - Música: use só faixas livres ou licenciadas.
