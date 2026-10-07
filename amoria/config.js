@@ -1,3 +1,1 @@
-// Cole os dados do seu projeto Supabase (Project Settings > API). A chave anon é pública por desenho: a segurança vem das políticas do schema.sql.
-// Sem preencher, o site funciona em modo local (sem login).
-window.AMORIA={url:"",key:""};
+window.AMORIA={url:"https://duziiskbkhvulndecrtn.supabase.co",key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1emlpc2tia2h2dWxuZGVjcnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNDU1MjcsImV4cCI6MjEwNjkyMTUyN30.tlOQ0oYl2Be-tVcs16FkdJv7aAtGRpfNj1mw7HD4Wrk"};
