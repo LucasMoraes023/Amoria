@@ -5,7 +5,7 @@ Não existe plano grátis nem Premium: **cada criação é paga**. O criador mon
 
 ## Como funciona a cobrança
 1. A pessoa cria a surpresa e toca em publicar.
-2. Aparece o **QR Code PIX** (com o valor já preenchido) e o "copia e cola".
+2. Pode criar quantas experiências quiser. Para cada experiência, aparece o **QR Code PIX** (com o valor já preenchido) e o "copia e cola".
 3. Ela paga e toca em **Enviar comprovante no WhatsApp** (abre a conversa com você).
 4. Você confere no seu banco e libera em **Admin > Experiências > Liberar**.
 5. A tela dela atualiza sozinha e mostra o link e o QR Code (com botões para enviar ao próprio WhatsApp ou e-mail).
@@ -15,6 +15,9 @@ Não existe plano grátis nem Premium: **cada criação é paga**. O criador mon
 2. SQL Editor > cole **todo** o `supabase/schema.sql` > Run. (Se já rodou antes, rode só os blocos das etapas novas: ETAPA 3 e ETAPA 4.)
 3. Authentication > URL Configuration: coloque o endereço do Netlify em Site URL e Redirect URLs.
 4. Project Settings > API: copie a **Project URL** e a chave **anon public**.
+
+### Atualizar um projeto já existente
+Se o site mostrar "Limite do seu plano atingido" ao criar outra experiência, no SQL Editor do Supabase abra e execute uma vez o arquivo [`supabase/unlimited-experiences.sql`](./supabase/unlimited-experiences.sql). A atualização remove o limite do banco e mantém a proteção: cada experiência nova fica sem link público até você aprovar o pagamento dela em **Admin > Experiências > Liberar**. O link e o QR Code de compartilhamento só aparecem depois da liberação. O QR Code PIX para pagamento continua disponível antes disso.
 
 ## 2. config.js
 `window.AMORIA={url:"https://xxxx.supabase.co",key:"SUA_CHAVE_ANON"};`
