@@ -4,11 +4,14 @@ App criado por Lucas Moraes.
 Não existe plano grátis nem Premium: **cada criação é paga**. O criador monta e visualiza, mas o **link e o QR Code só são liberados depois do pagamento**. O bloqueio é feito no servidor (Supabase), não só na tela.
 
 ## Como funciona a cobrança
-1. A pessoa cria a surpresa e toca em publicar.
-2. Pode criar quantas experiências quiser. Para cada experiência, aparece o **QR Code PIX** (com o valor já preenchido) e o "copia e cola".
-3. Ela paga e toca em **Enviar comprovante no WhatsApp** (abre a conversa com você).
-4. Você confere no seu banco e libera em **Admin > Experiências > Liberar**.
-5. A tela dela atualiza sozinha e mostra o link e o QR Code (com botões para enviar ao próprio WhatsApp ou e-mail).
+1. A pessoa entra ou cria uma conta para acessar a área principal e começar uma surpresa.
+2. A pessoa cria a surpresa e toca em publicar.
+3. Pode criar quantas experiências quiser. Para cada experiência, aparece o **QR Code PIX** (com o valor já preenchido) e o "copia e cola".
+4. Ela paga e toca em **Enviar comprovante no WhatsApp** (abre a conversa com você).
+5. Você confere no seu banco e libera em **Admin > Experiências > Liberar**.
+6. A tela dela atualiza sozinha e mostra o link e o QR Code (com botões para enviar ao próprio WhatsApp ou e-mail).
+
+A autenticação é obrigatória antes de acessar a página inicial ou criar experiências. Os links públicos de experiências continuam podendo ser abertos sem login.
 
 ## 1. Supabase
 1. supabase.com > New project.
@@ -36,7 +39,7 @@ Crie sua conta no site e rode no SQL Editor:
 - **WhatsApp** (com DDD): é para ele que a pessoa envia o comprovante. Sem isso, ela não tem como falar com você.
 
 ## Avisos
-- Sem Supabase (config.js vazio) o app roda em modo local e **não cobra**.
+- O Supabase deve estar configurado em `config.js` para entrar e criar experiências. Sem essa configuração, o app informa como habilitar a autenticação; experiências públicas existentes continuam abrindo.
 - Projetos Free do Supabase pausam após 7 dias sem uso.
 - A chave PIX e o WhatsApp ficam visíveis no site (o cliente precisa deles). Nunca coloque segredos nesses campos.
 - Música: use só faixas livres ou licenciadas.
