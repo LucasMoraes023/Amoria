@@ -1,55 +1,66 @@
-# AMORIA — Netlify + Supabase, pagamento por criação (PIX manual com QR Code)
-App criado por Lucas Moraes.
+# AMORIA
+App de experiências românticas criado por Lucas Moraes. Frontend estático, autenticação e dados no Supabase, funções serverless no Netlify.
 
-Não existe plano grátis nem Premium: **cada criação é paga**. O criador monta e visualiza, mas o **link e o QR Code só são liberados depois do pagamento**. O bloqueio é feito no servidor (Supabase), não só na tela.
+## Comportamento
+- Criar, editar, visualizar e publicar experiências é gratuito para usuários autenticados.
+- Links públicos existentes continuam abrindo sem login; experiências secretas, com senha, agendadas ou de contas bloqueadas mantêm suas proteções.
+- O QR padrão é gratuito. O QR personalizado é opcional, custa inicialmente R$ 6,99 e é cobrado uma única vez.
+- A foto decorativa fica fora dos módulos do QR. O gerador usa correção de erro alta e uma margem de segurança de pelo menos quatro módulos.
+- Dados antigos de pagamentos, assinaturas e planos não são apagados. As assinaturas não são usadas para conceder recursos e os pagamentos antigos permanecem identificados como histórico.
 
-## Como funciona a cobrança
-1. A pessoa entra ou cria uma conta para acessar a área principal e começar uma surpresa.
-2. A pessoa cria a surpresa e toca em publicar.
-3. Pode criar quantas experiências quiser. Para cada experiência, aparece o **QR Code PIX** (com o valor já preenchido) e o "copia e cola".
-4. Ela paga e toca em **Enviar comprovante no WhatsApp** (abre a conversa com você).
-5. Você confere no seu banco e libera em **Admin > Experiências > Liberar**.
-6. A tela dela atualiza sozinha e mostra o link e o QR Code (com botões para enviar ao próprio WhatsApp ou e-mail).
+## Atualizar uma instalação existente
+1. Faça deploy do código atualizado no Netlify sem recriar o projeto Supabase.
+2. No Supabase, abra o SQL Editor e execute uma vez `supabase/free-experiences-qr-addon.sql`. A migração é incremental: remove o limite e a exigência de pagamento para abrir declarações, desativa o efeito de planos/assinaturas, acrescenta a licença do QR personalizado e endurece RLS. Não apaga nem reescreve perfis, experiências, mídias, pagamentos, planos ou assinaturas antigas.
+3. Preserve a configuração de vídeos existente. Se ainda não foi habilitada, execute uma vez `supabase/video-support.sql`.
+4. Confira Authentication > URL Configuration e mantenha o domínio publicado em Site URL e Redirect URLs.
+5. Em `config.js`, configure a URL do projeto e a chave `anon public` do Supabase. Essa chave é pública por projeto; nunca use a service-role key no frontend.
 
-A autenticação é obrigatória antes de acessar a página inicial ou criar experiências. Os links públicos de experiências continuam podendo ser abertos sem login.
+Não execute `schema.sql` novamente em uma instalação existente. Para uma instalação nova, execute `supabase/schema.sql` primeiro e depois a migração `free-experiences-qr-addon.sql`.
 
-## 1. Supabase
-1. supabase.com > New project.
-2. SQL Editor > cole **todo** o `supabase/schema.sql` > Run. (Se já rodou antes, rode só os blocos das etapas novas: ETAPA 3 e ETAPA 4.)
-3. Para habilitar vídeos, abra `supabase/video-support.sql` no SQL Editor e execute-o uma vez. Isso adiciona um bucket separado e não altera as experiências existentes.
-4. Authentication > URL Configuration: coloque o endereço do Netlify em Site URL e Redirect URLs.
-5. Project Settings > API: copie a **Project URL** e a chave **anon public**.
+## Administrador principal
+As contas que já tinham `profiles.role = 'admin'` são preservadas na allowlist; nenhuma conta é escolhida por nome ou promovida automaticamente como administrador principal. As operações críticas ficam desabilitadas até configurar explicitamente a identidade autenticada do Lucas.
 
-## Recursos de criação
-- O editor oferece modelos de apresentação, apresentação automática de fotos e uma biblioteca de frases prontas.
-- Vídeos: até 3 arquivos MP4 ou WebM de até 25 MB cada. Execute a migração indicada acima uma vez para criar o bucket isolado de vídeos.
-- Presente digital: mensagem opcional e link externo seguro (HTTP/HTTPS).
-- QR Code personalizado é opcional: o cliente pode escolher cores e texto de moldura com prévia antes de publicar. Se selecionado, soma-se uma única vez R$ 6,99 ao preço normal por criação; o PIX mostra o total junto. O QR estilizado é disponibilizado após a liberação normal do pagamento.
-- Os novos dados de experiência são armazenados no conteúdo existente em JSON, sem recriar nem alterar tabelas. Experiências já publicadas mantêm os padrões atuais.
+1. Crie/confirme a conta AMORIA que pertence ao administrador principal.
+2. No Supabase Authentication > Users, copie o UUID dessa conta e confirme a identidade por um canal confiável. Não use o nome de exibição como prova.
+3. No SQL Editor, substitua `UUID-VERIFICADO` abaixo pelo UUID conferido e execute:
 
-### Atualizar um projeto já existente
-Se o site mostrar "Limite do seu plano atingido" ao criar outra experiência, no SQL Editor do Supabase abra e execute uma vez o arquivo [`supabase/unlimited-experiences.sql`](./supabase/unlimited-experiences.sql). A atualização remove o limite do banco e mantém a proteção: cada experiência nova fica sem link público até você aprovar o pagamento dela em **Admin > Experiências > Liberar**. O link e o QR Code de compartilhamento só aparecem depois da liberação. O QR Code PIX para pagamento continua disponível antes disso.
+```sql
+begin;
+insert into public.admin_allowlist(user_id)
+values ('UUID-VERIFICADO')
+on conflict (user_id) do nothing;
 
-Para adicionar suporte a vídeos sem recriar o banco nem alterar experiências existentes, execute uma vez [`supabase/video-support.sql`](./supabase/video-support.sql) no SQL Editor. Cada experiência pode incluir até 3 vídeos MP4 ou WebM, de até 25 MB cada.
+update public.profiles
+set role = 'admin'
+where id = 'UUID-VERIFICADO';
 
-## 2. config.js
-`window.AMORIA={url:"https://xxxx.supabase.co",key:"SUA_CHAVE_ANON"};`
+insert into public.admin_identity(slot, user_id)
+values (true, 'UUID-VERIFICADO')
+on conflict (slot) do update
+set user_id = excluded.user_id, configured_at = now();
+commit;
+```
 
-## 3. Netlify
-Importe o repositório do GitHub. Build command vazio, publish directory `.`. **Não precisa de variáveis de ambiente.**
+O UUID é uma autorização manual explícita e a identidade autenticada continua sendo conferida no banco para cada ação administrativa. Usuários comuns não podem alterar `role`, `plan` ou a licença QR. A troca de administrador principal deve ser feita no SQL Editor, nunca no navegador. As demais contas admin preexistentes são mantidas, mas operações críticas e leitura administrativa de dados pessoais ficam limitadas à identidade principal.
 
-## 4. Virar administrador
-Crie sua conta no site e rode no SQL Editor:
-`update public.profiles set role='admin' where id=(select id from auth.users where email='SEU@EMAIL.COM');`
+## Pagamento do QR personalizado
+Configure no painel Netlify > Site configuration > Environment variables, nos contextos de deploy que serão usados:
 
-## 5. Admin > Ajustes > Cobrança
-- **Preço por criação** (mínimo R$ 1,00)
-- **Chave PIX** (CPF só números, e-mail, celular com +55 ou chave aleatória)
-- **Nome do recebedor** e **Cidade** (como no seu banco)
-- **WhatsApp** (com DDD): é para ele que a pessoa envia o comprovante. Sem isso, ela não tem como falar com você.
+- `SUPABASE_URL`: URL do mesmo projeto Supabase usado em `config.js`.
+- `SUPABASE_SERVICE_ROLE_KEY`: chave service-role do projeto, somente no ambiente server-side do Netlify.
+- `MP_ACCESS_TOKEN`: access token do Mercado Pago. Use credencial de teste para validar sandbox e credencial de produção para cobrar de verdade.
 
-## Avisos
-- O Supabase deve estar configurado em `config.js` para entrar e criar experiências. Sem essa configuração, o app informa como habilitar a autenticação; experiências públicas existentes continuam abrindo.
-- Projetos Free do Supabase pausam após 7 dias sem uso.
-- A chave PIX e o WhatsApp ficam visíveis no site (o cliente precisa deles). Nunca coloque segredos nesses campos.
-- Música: use só faixas livres ou licenciadas.
+O Netlify fornece `URL` e, em deploys de preview, `DEPLOY_PRIME_URL`. Uma dessas URLs também é necessária para registrar o webhook. Sem as três credenciais e uma URL de deploy, a função informa que o pagamento está desabilitado e o QR padrão continua gratuito.
+
+O preço inicial fica em `settings.billing.qr_custom_cents` (699 centavos), editável por administrador principal em Admin > Configurações. O backend lê o valor, cria uma cobrança PIX Mercado Pago idempotente e o webhook consulta a API do provedor, conferindo referência, moeda, valor e pagamento pendente antes de liberar o adicional. Nenhuma chave secreta fica no cliente. Configure alertas/webhooks adicionais somente se exigidos pela conta Mercado Pago; a função já envia `notification_url` na criação do pagamento.
+
+## Execução e validação local
+O site é estático; para testar rotas e service worker, sirva a raiz do repositório por HTTP. Login, publicação na nuvem e checkout exigem Supabase e as configurações Netlify acima. O fluxo de pagamento deve ser testado com credenciais e usuário comprador de teste do Mercado Pago; não use pagamentos reais como teste.
+
+Não há suíte de testes automatizada nem manifesto de dependências neste repositório. `node --check` pode verificar o JavaScript embutido e as funções Netlify. A configuração e o resultado de chamadas reais dependem das credenciais externas.
+
+## Recursos preservados
+- Autenticação por e-mail/senha, recuperação de senha, sessões Supabase e rotas públicas existentes.
+- Experiências, histórico de visitas, fotos, vídeos, músicas, temas, estatísticas e contas existentes.
+- Ferramenta de música e controles de usuários/experiências no painel administrativo.
+- O painel não simula indicadores: métricas e pagamentos são lidos do banco. Logs operacionais de Functions permanecem no painel Netlify; tentativas de autenticação ficam nos logs do Supabase.

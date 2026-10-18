@@ -1,4 +1,5 @@
--- AMORIA: cole tudo no Supabase (SQL Editor) e clique em Run.
+-- AMORIA base schema. After this file, also run free-experiences-qr-addon.sql.
+-- The incremental migration is required for free publishing and current RLS.
 create table public.profiles(
   id uuid primary key references auth.users(id) on delete cascade,
   name text not null default '',
@@ -145,8 +146,8 @@ create policy sm_read on storage.objects for select using (bucket_id='music');
 create policy sm_ins on storage.objects for insert to authenticated with check (bucket_id='music' and ((storage.foldername(name))[1]=auth.uid()::text or public.is_admin()));
 create policy sm_del on storage.objects for delete to authenticated using (bucket_id='music' and ((storage.foldername(name))[1]=auth.uid()::text or public.is_admin()));
 
--- Para virar administrador (troque o e-mail e rode depois de criar sua conta no site):
--- update public.profiles set role='admin' where id=(select id from auth.users where email='SEU@EMAIL.COM');
+-- Configure the verified principal admin UUID only after running
+-- free-experiences-qr-addon.sql. See README.md for the exact SQL and steps.
 
 -- ===== ETAPA 3: COBRANÇA PIX (se você já rodou as etapas 1 e 2, rode apenas daqui para baixo) =====
 alter table public.experiences add column if not exists paid boolean not null default false, add column if not exists paid_at timestamptz, add column if not exists pay_ref text;
