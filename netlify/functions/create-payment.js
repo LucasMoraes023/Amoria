@@ -43,8 +43,9 @@ exports.handler = async ev => {
     let price = Number(b && b.value.qr_custom_cents) || 699;
     if (!Number.isSafeInteger(price) || price < 100) return R(503, { error: 'Preço do adicional QR inválido' });
     const findPending = async () => {
-      const rows = await sb(`payments?experience_id=eq.${expId}&purpose=eq.qr_custom&status=eq.pending&select=id,provider,provider_ref,amount_cents`).then(r => r.json());
-      return rows[0];
+      const response = await sb(`payments?experience_id=eq.${expId}&user_id=eq.${u.id}&purpose=eq.qr_custom&status=eq.pending&select=id,experience_id,user_id,purpose,status,provider,provider_ref,amount_cents`);
+      if (!response.ok) throw new Error('Não foi possível consultar o pagamento pendente');
+      return (await response.json())[0];
     };
     let payment = await findPending();
     if (!payment) {
@@ -54,13 +55,16 @@ exports.handler = async ev => {
       else return R(502, { error: 'Não foi possível iniciar o pagamento' });
     }
     if (!payment) return R(409, { error: 'Já existe uma solicitação de pagamento em andamento' });
+    if (payment.experience_id !== e.id || payment.user_id !== u.id || payment.purpose !== 'qr_custom' || payment.status !== 'pending') return R(409, { error: 'O pagamento pendente não corresponde a esta experiência e usuário' });
     price = Number(payment.amount_cents);
     if (!Number.isSafeInteger(price) || price < 100 || payment.provider !== 'mercadopago') return R(409, { error: 'O pagamento pendente não é válido. Atualize a página e tente novamente.' });
     if (payment.provider_ref) {
       const old = await fetch('https://api.mercadopago.com/v1/payments/' + encodeURIComponent(payment.provider_ref), { headers: { Authorization: 'Bearer ' + MP } });
       const existing = old.ok ? await old.json() : null;
       const transaction = existing && existing.point_of_interaction && existing.point_of_interaction.transaction_data;
-      if (transaction) return R(200, { code: transaction.qr_code, qr: transaction.qr_code_base64, amount: price });
+      if (existing && (existing.status !== 'pending' || existing.payment_method_id !== 'pix' || existing.external_reference !== e.id || existing.currency_id !== 'BRL' || Math.round(Number(existing.transaction_amount) * 100) !== price)) return R(409, { error: 'Este pagamento não está mais pendente ou não corresponde a esta experiência. Aguarde a atualização do status.' });
+      if (transaction && transaction.qr_code && transaction.qr_code_base64) return R(200, { code: transaction.qr_code, qr: transaction.qr_code_base64, amount: price });
+      if (existing) return R(502, { error: 'Não foi possível recuperar o código PIX pendente' });
     }
     const r = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
@@ -76,9 +80,11 @@ exports.handler = async ev => {
     });
     const p = await r.json();
     if (!r.ok) return R(502, { error: p.message || 'Erro no Mercado Pago' });
+    if (!p.id || p.status !== 'pending' || p.payment_method_id !== 'pix' || p.external_reference !== e.id || p.currency_id !== 'BRL' || Math.round(Number(p.transaction_amount) * 100) !== price) return R(502, { error: 'O Mercado Pago retornou um pagamento diferente do esperado' });
+    const t = p.point_of_interaction && p.point_of_interaction.transaction_data;
+    if (!t || !t.qr_code || !t.qr_code_base64) return R(502, { error: 'O Mercado Pago não retornou um código PIX válido' });
     const saved = await sb(`payments?id=eq.${payment.id}`, { method: 'PATCH', body: JSON.stringify({ provider_ref: String(p.id) }) });
     if (!saved.ok) return R(502, { error: 'O pagamento foi criado; tente novamente para recuperar o QR PIX' });
-    const t = p.point_of_interaction.transaction_data;
     return R(200, { code: t.qr_code, qr: t.qr_code_base64, amount: price });
   } catch (err) {
     return R(500, { error: 'Falha ao gerar o PIX' });
