@@ -42,12 +42,14 @@ exports.handler = async ev => {
     const [b] = await sb('settings?key=eq.billing&select=value').then(r => r.json());
     let price = Number(b && b.value.qr_custom_cents) || 699;
     if (!Number.isSafeInteger(price) || price < 100) return R(503, { error: 'Preço do adicional QR inválido' });
-    const findPending = async () => {
-      const response = await sb(`payments?experience_id=eq.${expId}&user_id=eq.${u.id}&purpose=eq.qr_custom&status=eq.pending&select=id,experience_id,user_id,purpose,status,provider,provider_ref,amount_cents`);
-      if (!response.ok) throw new Error('Não foi possível consultar o pagamento pendente');
+    const findPayment = async (status) => {
+      const response = await sb(`payments?experience_id=eq.${expId}&user_id=eq.${u.id}&purpose=eq.qr_custom&status=eq.${encodeURIComponent(status)}&select=id,experience_id,user_id,purpose,status,provider,provider_ref,amount_cents`);
+      if (!response.ok) throw new Error(`Não foi possível consultar o pagamento ${status}`);
       return (await response.json())[0];
     };
-    let payment = await findPending();
+    const approvedPayment = await findPayment('approved').catch(() => null);
+    if (approvedPayment && approvedPayment.status === 'approved') return R(200, { paid: true });
+    let payment = await findPayment('pending').catch(() => null);
     if (!payment) {
       const created = await sb('payments', { method: 'POST', body: JSON.stringify({ experience_id: e.id, user_id: u.id, amount_cents: price, purpose: 'qr_custom', provider: 'mercadopago' }) });
       if (created.ok) payment = (await created.json())[0];
