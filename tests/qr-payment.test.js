@@ -73,9 +73,15 @@ test('payment-disabled state renders the full editor, says checkout is unavailab
   assert.match(editor, /QR padrão continua gratuito/);
 });
 
-test('missing Supabase configuration shows a clear editor error instead of silently hiding the section', () => {
+test('missing Supabase configuration keeps every QR option visible and warns that changes are not saved or published', () => {
   const editor = renderQrEditor({ enabled: false, supabase: false });
-  assert.match(editor, /precisa de conexão com o Supabase/);
+  assert.match(editor, /Adicionar QR Code personalizado/);
+  assert.match(editor, /Romântico/);
+  assert.match(editor, /Aniversário/);
+  assert.match(editor, /Casamento/);
+  assert.match(editor, /Presente/);
+  assert.match(editor, /não serão salvas nem publicadas/);
+  assert.match(editor, /apenas uma prévia|opções não serão salvas/);
   assert.match(editor, /QR padrão gratuito continua disponível/);
 });
 
@@ -115,6 +121,52 @@ test('draft preview remains visual but uses a clearly identified valid homepage 
   assert.equal(image.src, 'data:image/png;base64,preview');
   assert.match(image.alt, /exemplo abre a página inicial/);
   assert.match(destination.textContent, /QR definitivo será gerado após publicar/);
+});
+
+test('customized publishing without Supabase is blocked and never saves or shows success', async () => {
+  const publishSource = sourceLine('async function publish(');
+  const effects = { saved: false, completed: false, messages: [] };
+  const publish = new Function('effects', `
+    let SB = null;
+    const D = { qrCustom: true };
+    const toast = message => effects.messages.push(message);
+    const load = () => { throw new Error('local fallback must not run'); };
+    const save = () => { effects.saved = true; };
+    const done = () => { effects.completed = true; };
+    const cloudPublish = () => { effects.completed = true; };
+    const nid = () => 'new-id';
+    const mkLink = async () => 'https://amoria.example.test';
+    const safeGiftUrl = () => true;
+    const qrContrast = () => 7;
+    ${publishSource}
+    return publish();
+  `)(effects);
+  await publish;
+  assert.equal(effects.saved, false);
+  assert.equal(effects.completed, false);
+  assert.ok(effects.messages[0].includes('Conecte-se ao Supabase'));
+});
+
+test('free local publishing remains available when personalized QR is not selected', async () => {
+  const publishSource = sourceLine('async function publish(');
+  const effects = { saved: false, completed: false };
+  await new Function('effects', `
+    let SB = null;
+    const D = { qrCustom: false, to: 'Recebe', from: 'Envia', msg: 'Mensagem', line: '', priv: 'public', giftUrl: '', id: '' };
+    const toast = () => {};
+    const load = () => [];
+    const save = () => { effects.saved = true; return true; };
+    const done = () => { effects.completed = true; };
+    const cloudPublish = () => { throw new Error('cloud publish must not run'); };
+    const nid = () => 'local-id';
+    const mkLink = async () => 'https://amoria.example.test/#/amor/local-id';
+    const safeGiftUrl = () => true;
+    const qrContrast = () => 7;
+    ${publishSource}
+    return publish();
+  `)(effects);
+  assert.equal(effects.saved, true);
+  assert.equal(effects.completed, true);
 });
 
 test('unpaid custom selection continues to generate the free standard QR', async () => {
