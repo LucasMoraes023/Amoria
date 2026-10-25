@@ -1,6 +1,11 @@
 [build]
   publish = "."
 
+# A URL do projeto Supabase é pública por design: o front-end (config.js) precisa dela
+# junto com a chave anon. As chaves secretas (service role, Mercado Pago) continuam sendo verificadas.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+
 [[headers]]
   for = "/*"
   [headers.values]
