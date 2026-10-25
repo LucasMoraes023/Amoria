@@ -5,11 +5,11 @@ const crypto = require('crypto');
 
 const KEY_TEXT = 'sk-ant-TESTE-segredo-123', KEY_IMG = 'sk-oai-TESTE-segredo-456', SK = 'service-role-segredo';
 process.env.SUPABASE_URL = 'https://fake.supabase.co'; process.env.SUPABASE_SERVICE_ROLE_KEY = SK; process.env.URL = 'https://amoria.test';
-process.env.ANTHROPIC_API_KEY = KEY_TEXT; process.env.OPENAI_API_KEY = KEY_IMG;
+process.env.ANTHROPIC_API_KEY = KEY_TEXT; process.env.OPENAI_API_KEY = KEY_IMG; delete process.env.ANTHROPIC_BASE_URL; delete process.env.OPENAI_BASE_URL;
 const A = require('../netlify/lib/ai');
-const gen = require('../netlify/functions/ai-generate').handler;
-const bg = require('../netlify/functions/ai-image-background').handler;
-const adm = require('../netlify/functions/ai-admin').handler;
+const gen = require('../netlify/lib/ai-handlers').generate;
+const bg = require('../netlify/lib/ai-handlers').background;
+const adm = require('../netlify/lib/ai-handlers').admin;
 
 const UID = '11111111-1111-4111-8111-111111111111', UID2 = '33333333-3333-4333-8333-333333333333', ADMIN = '22222222-2222-4222-8222-222222222222';
 let db, prov, log;

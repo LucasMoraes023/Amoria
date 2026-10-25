@@ -1,14 +1,21 @@
-// AMORIA AI Studio — gera textos (Anthropic) e inicia fundos com IA (OpenAI, em segundo plano).
-// O navegador nunca recebe chaves, e só envia opções fechadas e textos curtos e validados.
-const A = require('../lib/ai');
-const L = require('../lib/payments');
-const { R, sb, rows } = L;
+// Lógica das funções de IA (ai-generate, ai-image-background, ai-admin) no formato evento → { statusCode, headers, body }.
+// Os arquivos em netlify/functions só adaptam para a sintaxe v2 (Request → Response), exigida pelo AI Gateway da Netlify.
+const A = require('./ai');
+const L = require('./payments');
+const { R, rows, sb } = L;
 
+// Converte Request (v2) em evento e o resultado em Response
+const v2 = fn => async req => {
+  const r = await fn({ httpMethod: req.method, headers: Object.fromEntries(req.headers), body: req.method === 'GET' || req.method === 'HEAD' ? '' : await req.text() });
+  return new Response(r.body == null ? null : r.body, { status: r.statusCode, headers: r.headers });
+};
+
+// ---- ai-generate ----
 const settings = async () => (await rows(await sb('ai_settings?slot=eq.true&select=*')))[0];
 const keys = () => ({ text: !!process.env.ANTHROPIC_API_KEY, image: !!process.env.OPENAI_API_KEY });
 const REASON = { disabled: 'A IA ainda não foi ativada para este site.', budget: 'O limite mensal de uso da IA foi atingido. Tente novamente no próximo mês.', limit: 'Você atingiu o limite diário de gerações com IA. Tente novamente amanhã.' };
 
-exports.handler = async ev => {
+const generate = async ev => {
   const e = L.env();
   if (!e.SU || !e.SK) return R(503, { error: 'A IA ainda não está configurada.' });
   try {
@@ -76,3 +83,60 @@ exports.handler = async ev => {
     } catch (err) { return fail(err); }
   } catch (err) { return R(500, { error: 'Falha ao gerar com IA.' }); }
 };
+
+// ---- ai-image-background ----
+const background = async ev => {
+  const e = L.env();
+  let body = {};
+  try { body = JSON.parse(ev.body || '{}'); } catch { return { statusCode: 400 }; }
+  const h = {}; for (const k of Object.keys(ev.headers || {})) h[k.toLowerCase()] = ev.headers[k];
+  const id = parseInt(body.job, 10), uid = String(body.uid || '');
+  if (!e.SK || !Number.isSafeInteger(id) || !A.sameSig(h['x-amoria-signature'], A.sign(e.SK, String(id), uid))) return { statusCode: 401 };
+  const [job] = await rows(await sb(`ai_usage?id=eq.${id}&user_id=eq.${encodeURIComponent(uid)}&kind=eq.image&status=eq.pending&select=id,model`));
+  if (!job) return { statusCode: 404 };
+  const finish = (st, err, url, path) => L.rpcJson('ai_finish', { p_id: id, p_status: st, p_error: err || null, p_in: null, p_out: null, p_url: url || null, p_path: path || null });
+  try {
+    const inp = A.parseInput(body.params);
+    if (inp.kind !== 'image' || !process.env.OPENAI_API_KEY) throw new A.ProviderError('A IA não está configurada.', 503, 'Chave de imagens ausente');
+    const model = job.model, bytes = await A.callOpenAIImage({ key: process.env.OPENAI_API_KEY, model, prompt: A.imagePrompt(inp), size: A.imageSize(model, inp.layout) });
+    if (!bytes || bytes.length < 100 || bytes.length > 12 * 1024 * 1024) throw new A.ProviderError('A IA devolveu uma imagem inválida.', 502, 'Imagem fora do tamanho esperado');
+    const path = `${uid}/ai/${require('crypto').randomUUID()}.png`;
+    const up = await fetch(`${e.SU}/storage/v1/object/photos/${path}`, { method: 'POST', headers: { apikey: e.SK, Authorization: 'Bearer ' + e.SK, 'content-type': 'image/png', 'x-upsert': 'false' }, body: bytes });
+    if (!up.ok) throw new A.ProviderError('Não foi possível salvar a imagem.', 502, 'Falha ao gravar no armazenamento (HTTP ' + up.status + ')');
+    await finish('ok', null, `${e.SU}/storage/v1/object/public/photos/${path}`, path);
+    return { statusCode: 200 };
+  } catch (err) {
+    await finish('error', (err && err.internal) || 'Falha inesperada');
+    return { statusCode: 200 };
+  }
+};
+
+// ---- ai-admin ----
+const admin = async ev => {
+  const e = L.env();
+  if (!e.SU || !e.SK) return R(503, { error: 'SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY não configuradas no Netlify' });
+  try {
+    const u = await L.getUser(ev);
+    if (!u) return R(401, { error: 'Faça login' });
+    if (!(await L.isPrimaryAdmin(u.id))) return R(403, { error: 'Acesso restrito ao administrador principal' });
+    if (ev.httpMethod === 'POST') {
+      let body = {}; try { body = JSON.parse(ev.body || '{}'); } catch { body = {}; }
+      const s = (await rows(await sb('ai_settings?slot=eq.true&select=*')))[0];
+      if (body.target === 'text') {
+        if (!process.env.ANTHROPIC_API_KEY) return R(200, { ok: false, detail: 'ANTHROPIC_API_KEY ausente no Netlify' });
+        try { await A.callAnthropic({ key: process.env.ANTHROPIC_API_KEY, model: s.text_model, system: 'Responda apenas com a palavra: ok', user: 'ok', maxTokens: 16, timeoutMs: 8000 }); return R(200, { ok: true, detail: 'Chave aceita e modelo "' + s.text_model + '" respondeu.' }); }
+        catch (err) { return R(200, { ok: false, detail: (err && err.internal) || 'Falha no teste' }); }
+      }
+      if (body.target === 'image') {
+        if (!process.env.OPENAI_API_KEY) return R(200, { ok: false, detail: 'OPENAI_API_KEY ausente no Netlify' });
+        try { const r = await fetch((process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '') + '/models', { headers: { Authorization: 'Bearer ' + process.env.OPENAI_API_KEY } }); return R(200, { ok: r.ok, detail: r.ok ? 'Credencial aceita pelo provedor de imagens (nenhuma imagem foi gerada neste teste).' : 'Falha na validação (HTTP ' + r.status + ')' }); }
+        catch { return R(200, { ok: false, detail: 'Provedor de imagens inacessível' }); }
+      }
+      return R(400, { error: 'Alvo inválido' });
+    }
+    return R(200, { text_key: process.env.ANTHROPIC_API_KEY ? 'configurado' : 'ausente', image_key: process.env.OPENAI_API_KEY ? 'configurado' : 'ausente',
+      background_url: e.SITE ? e.SITE + '/.netlify/functions/ai-image-background' : null, site_url: e.SITE || null });
+  } catch { return R(500, { error: 'Falha ao consultar a integração' }); }
+};
+
+module.exports = { v2, generate, background, admin };
