@@ -1,5 +1,5 @@
--- AMORIA: Catálogo de preços, cupons, cortesias, direitos de acesso e pedidos com preço congelado.
--- Seguro para reexecutar. Não apaga dados. Por padrão nada novo passa a ser cobrado.
+-- AMORIA: catálogo de preços, cupons de cortesia, direitos de acesso e pedidos.
+-- Seguro para reexecutar. Não apaga dados.
 
 -- ========== 1) Produtos ==========
 create table if not exists public.products (
@@ -36,11 +36,18 @@ grant select on public.products to anon, authenticated;
 -- produtos já conectados ao sistema (preço do QR vem do valor atual de settings.billing)
 insert into public.products(code,name,description,price_cents,active,wired,lock_stage,sort)
 values ('qr_custom','QR Code personalizado','Arte personalizada para o QR Code: foto, moldura, cores e textos.',
-  coalesce((select (value->>'qr_custom_cents')::int from public.settings where key='billing'),699),true,true,'download',10)
+  least(1000000,greatest(100,coalesce((select (value->>'qr_custom_cents')::int from public.settings where key='billing'),699))),true,true,'download',10)
 on conflict (code) do nothing;
+insert into public.products(code,name,description,price_cents,active,wired,lock_stage,sort)
+values ('qr_standard','Download do QR Code','Arquivo normal do QR Code da experiência em PNG, JPG ou PDF.',699,true,true,'download',5)
+on conflict (code) do nothing;
+update public.products set price_cents=greatest(price_cents,100),active=true,wired=true,lock_stage='download',updated_at=now()
+  where code in ('qr_custom','qr_standard');
 insert into public.products(code,name,description,price_cents,active,wired,lock_stage,sort)
 values ('publish_experience','Publicar experiência','Publicação da experiência com link e QR Code funcionais.',0,false,true,'publish',20)
 on conflict (code) do nothing;
+update public.products set price_cents=0,active=false,lock_stage='none',updated_at=now()
+  where code='publish_experience';
 
 -- ========== 2) Cupons ==========
 create table if not exists public.coupons (
@@ -94,6 +101,12 @@ create index if not exists coupon_redemptions_coupon_idx on public.coupon_redemp
 alter table public.coupon_redemptions enable row level security;
 revoke all on public.coupon_redemptions from anon, authenticated;
 
+insert into public.coupons(code,kind,value,product_codes,max_uses,per_user_limit,active,note)
+values('AMORIA1','free',0,array['qr_standard','qr_custom'],null,3,true,'Até 3 downloads gratuitos por usuário; válido para QR normal e personalizado.')
+on conflict (code) do update set kind='free',value=0,product_codes=array['qr_standard','qr_custom'],
+  max_uses=null,per_user_limit=3,starts_at=null,ends_at=null,allowed_user_ids=null,active=true,
+  note='Até 3 downloads gratuitos por usuário; válido para QR normal e personalizado.',deleted_at=null;
+
 -- ========== 4) Direitos de acesso (entitlements) ==========
 create table if not exists public.entitlements (
   id uuid primary key default gen_random_uuid(),
@@ -130,8 +143,14 @@ begin
   if p.promo_new_users_days is not null and (uid is null or not exists(
       select 1 from public.profiles where id=uid and created_at > now() - make_interval(days => p.promo_new_users_days))) then
     return 0; end if;
-  if p.promo_percent is not null then return floor(p.price_cents * p.promo_percent / 100.0)::int; end if;
-  if p.promo_fixed_cents is not null then return least(p.promo_fixed_cents, p.price_cents); end if;
+  if p.promo_percent is not null then
+    if p.code in ('qr_custom','qr_standard') then return least(floor(p.price_cents * p.promo_percent / 100.0)::int,greatest(0,p.price_cents-1)); end if;
+    return floor(p.price_cents * p.promo_percent / 100.0)::int;
+  end if;
+  if p.promo_fixed_cents is not null then
+    if p.code in ('qr_custom','qr_standard') then return least(p.promo_fixed_cents,greatest(0,p.price_cents-1)); end if;
+    return least(p.promo_fixed_cents,p.price_cents);
+  end if;
   return 0;
 end $$;
 
@@ -219,7 +238,7 @@ begin
   q:=public.compute_quote(p_uid,p_code,p_coupon,true);
   if not (q->>'ok')::boolean then raise exception '%', q->>'error'; end if;
   select * into p from public.products where code=p_code;
-  if p_code='qr_custom' then
+  if p_code in ('qr_custom','qr_standard') then
     if p_exp is null or not exists(select 1 from public.experiences where id=p_exp and owner=p_uid) then
       raise exception 'Experiência não encontrada'; end if;
   else p_exp:=null; end if;
@@ -245,27 +264,13 @@ begin
   return jsonb_build_object('order_id',o.id,'amount_cents',fin,'free',free,'status',o.status);
 end $$;
 
--- ========== 7) Bloqueio de publicação no servidor ==========
+-- Publicar experiências nunca exige pagamento nem consome créditos.
 create or replace function public.gate_publish() returns trigger
 language plpgsql security definer set search_path=public as $$
-declare p public.products; cnt int; e public.entitlements%rowtype;
 begin
-  if auth.uid() is null or public.is_primary_admin() then return new; end if;
-  select * into p from public.products where code='publish_experience' and active and deleted_at is null and lock_stage in ('publish','link');
-  if not found then return new; end if;
-  if p.price_cents - public._promo_discount(p,new.owner) <= 0 then return new; end if;
-  select count(*) into cnt from public.experiences where owner=new.owner;
-  if cnt < p.included_qty then return new; end if;
-  select * into e from public.entitlements
-    where user_id=new.owner and product_code='publish_experience' and revoked_at is null
-      and (expires_at is null or expires_at>now()) and consumed<quantity
-    order by created_at limit 1 for update;
-  if not found then raise exception 'PAGAMENTO_NECESSARIO:publish_experience'; end if;
-  update public.entitlements set consumed=consumed+1 where id=e.id;
   return new;
 end $$;
 drop trigger if exists gate_publish on public.experiences;
-create trigger gate_publish before insert on public.experiences for each row execute function public.gate_publish();
 
 -- ========== 8) Funções para o usuário ==========
 create or replace function public.get_catalog() returns jsonb
@@ -340,10 +345,12 @@ begin
     if found and cur.deleted_at is null then raise exception 'Já existe um produto com este código'; end if;
   end if;
   if cd !~ '^[a-z0-9_]{3,40}$' then raise exception 'Código inválido (use letras minúsculas, números e _; 3 a 40 caracteres)'; end if;
-  if cd='qr_custom' then st:='download'; end if;
+  if cd in ('qr_custom','qr_standard') then
+    if pr<100 then raise exception 'O preço dos downloads de QR deve ser de pelo menos R$ 1,00'; end if;
+    st:='download'; ac:=true;
+  end if;
   if cd='publish_experience' then
-    if st not in ('none','publish') then raise exception 'Para publicar, as etapas permitidas são "nenhuma" ou "publicação"'; end if;
-    if pr>0 and st<>'publish' then raise exception 'Para cobrar a publicação, escolha o bloqueio na etapa de publicação'; end if;
+    pr:=0; ac:=false; st:='none'; pp:=null; pf:=null; ps:=null; pe:=null; pn:=null;
   end if;
   if cur.id is null then
     insert into public.products(code,name,description,price_cents,active,wired,lock_stage,included_qty,extra_unit_cents,limits,
@@ -356,8 +363,11 @@ begin
         promo_percent=pp,promo_fixed_cents=pf,promo_starts=ps,promo_ends=pe,promo_new_users_days=pn,sort=so,deleted_at=null,updated_at=now()
       where id=cur.id returning * into res;
   end if;
-  if res.code='qr_custom' then
-    update public.settings set value=jsonb_build_object('price_cents',0,'qr_custom_cents',greatest(100,res.price_cents)) where key='billing'; end if;
+  if res.code in ('qr_custom','qr_standard') then
+    update public.products set active=true,wired=true,lock_stage='download',updated_at=now() where id=res.id returning * into res;
+  elsif res.code='publish_experience' then
+    update public.products set price_cents=0,active=false,lock_stage='none',updated_at=now() where id=res.id returning * into res;
+  end if;
   insert into public.admin_audit(actor,action,record_type,record_id,detail) values(auth.uid(),case when cur.id is null then 'CREATE' else 'UPDATE' end,'products',res.code,detail);
   return to_jsonb(res);
 end $$;
@@ -384,6 +394,21 @@ begin
       'orders_approved',(select count(*) from public.coupon_redemptions r join public.payments o on o.id=r.order_id where r.coupon_id=c.id and o.status='approved'),
       'discount_given_cents',(select coalesce(sum(r.discount_cents),0) from public.coupon_redemptions r join public.payments o on o.id=r.order_id where r.coupon_id=c.id and o.status='approved'))
     order by c.created_at desc) from public.coupons c where c.deleted_at is null),'[]'::jsonb);
+end $$;
+
+create or replace function public.admin_coupon_redemptions(p_coupon uuid default null)
+returns table(code text,user_id uuid,user_email text,order_id uuid,product_code text,discount_cents integer,status text,redeemed_at timestamptz)
+language plpgsql security definer set search_path=public as $$
+begin
+  if not public.is_primary_admin() then raise exception 'forbidden'; end if;
+  return query
+    select c.code,r.user_id,u.email::text,r.order_id,o.product_code,r.discount_cents,o.status,r.created_at
+    from public.coupon_redemptions r
+    join public.coupons c on c.id=r.coupon_id
+    join public.payments o on o.id=r.order_id
+    left join auth.users u on u.id=r.user_id
+    where p_coupon is null or r.coupon_id=p_coupon
+    order by r.created_at desc limit 500;
 end $$;
 
 create or replace function public.admin_coupon_save(p jsonb) returns jsonb
@@ -433,29 +458,7 @@ begin
   insert into public.admin_audit(actor,action,record_type,record_id,detail) values(auth.uid(),'DELETE','coupons',c.code,'exclusão lógica');
 end $$;
 
--- ========== 11) Administração: cortesias e liberações ==========
-create or replace function public.admin_grant_entitlement(p_user uuid,p_product text,p_experience uuid,p_reason text,p_expires timestamptz default null,p_quantity integer default 1)
-returns uuid language plpgsql security definer set search_path=public as $$
-declare e uuid; why text:=btrim(coalesce(p_reason,''));
-begin
-  if not public.is_primary_admin() then raise exception 'forbidden'; end if;
-  if length(why)<5 then raise exception 'Informe a justificativa da cortesia (mínimo 5 caracteres)'; end if;
-  if coalesce(p_quantity,1)<1 or coalesce(p_quantity,1)>100 then raise exception 'Quantidade inválida'; end if;
-  if p_expires is not null and p_expires<=now() then raise exception 'A validade deve estar no futuro'; end if;
-  if not exists(select 1 from auth.users where id=p_user) then raise exception 'Usuário não encontrado'; end if;
-  if not exists(select 1 from public.products where code=p_product and deleted_at is null) then raise exception 'Produto não encontrado'; end if;
-  if p_product='qr_custom' then
-    if p_experience is null or not exists(select 1 from public.experiences where id=p_experience and owner=p_user) then
-      raise exception 'Escolha uma experiência deste usuário para liberar o QR personalizado'; end if;
-  else p_experience:=null; end if;
-  insert into public.entitlements(user_id,product_code,experience_id,source,quantity,granted_by,reason,expires_at)
-    values(p_user,p_product,p_experience,'courtesy',coalesce(p_quantity,1),auth.uid(),why,p_expires) returning id into e;
-  if p_product='qr_custom' then update public.experiences set qr_custom_paid=true where id=p_experience; end if;
-  insert into public.admin_audit(actor,action,record_type,record_id,detail)
-    values(auth.uid(),'GRANT','entitlements',e::text,format('cortesia %s para %s: %s',p_product,p_user,why));
-  return e;
-end $$;
-
+-- Cortesias novas só podem ser criadas por cupons resgatados no checkout.
 create or replace function public.admin_revoke_entitlement(p_id uuid,p_reason text) returns void
 language plpgsql security definer set search_path=public as $$
 declare e public.entitlements; why text:=btrim(coalesce(p_reason,''));
@@ -486,14 +489,10 @@ end $$;
 -- ========== 12) Funções existentes atualizadas ==========
 create or replace function public.admin_save_settings(p_themes jsonb,p_billing jsonb)
 returns void language plpgsql security definer set search_path=public as $$
-declare price int:=greatest(100,coalesce((p_billing->>'qr_custom_cents')::integer,699));
 begin
   if not public.is_primary_admin() then raise exception 'forbidden'; end if;
-  insert into public.settings(key,value) values
-    ('themes',coalesce(p_themes,'{}'::jsonb)),
-    ('billing',jsonb_build_object('price_cents',0,'qr_custom_cents',price))
+  insert into public.settings(key,value) values('themes',coalesce(p_themes,'{}'::jsonb))
   on conflict(key) do update set value=excluded.value;
-  update public.products set price_cents=price,updated_at=now() where code='qr_custom' and price_cents<>price;
 end $$;
 
 drop function if exists public.admin_orders(text,text,date,date);
@@ -583,7 +582,7 @@ begin
   end loop;
   foreach fn in array array['quote_product(text,text)','my_credit(text)','my_orders()','admin_products_list()','admin_product_save(jsonb)',
       'admin_product_delete(uuid)','admin_coupons_list()','admin_coupon_save(jsonb)','admin_coupon_delete(uuid)',
-      'admin_grant_entitlement(uuid,text,uuid,text,timestamptz,integer)','admin_revoke_entitlement(uuid,text)','admin_entitlements(text)',
+      'admin_coupon_redemptions(uuid)','admin_revoke_entitlement(uuid,text)','admin_entitlements(text)',
       'admin_orders(text,text,date,date)','admin_confirm_manual_payment(uuid)','admin_audit_log()','admin_payment_report(date,date)',
       'admin_save_settings(jsonb,jsonb)'] loop
     execute format('revoke all on function public.%s from public,anon',fn);
@@ -592,6 +591,9 @@ begin
   revoke all on function public.get_catalog() from public;
   grant execute on function public.get_catalog() to anon, authenticated;
 end $$;
+
+drop function if exists public.admin_grant_entitlement(uuid,text,uuid,text,timestamptz,integer);
+drop function if exists public.admin_set_paid(uuid,boolean);
 
 -- ========== 14) Privilégio mínimo nas tabelas (aplicado depois do módulo) ==========
 -- O app só escreve direto em experiences e music; o resto passa por funções do servidor.
