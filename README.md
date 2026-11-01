@@ -46,19 +46,21 @@ commit;
 
 O UUID é uma autorização manual explícita e a identidade autenticada continua sendo conferida no banco para cada ação administrativa. Usuários comuns não podem alterar `role`, `plan` ou a licença QR. A troca de administrador principal deve ser feita no SQL Editor, nunca no navegador. As demais contas admin preexistentes são mantidas, mas operações críticas e leitura administrativa de dados pessoais ficam limitadas à identidade principal.
 
-## Pagamentos e downloads de QR
-Configure no painel Netlify > Site configuration > Environment variables, nos contextos de deploy que serão usados:
+## Pagamentos e downloads de QR — Pix direto
 
-- `SUPABASE_URL`: URL do mesmo projeto Supabase usado em `config.js`.
-- `SUPABASE_SERVICE_ROLE_KEY`: chave service-role do projeto, somente no ambiente server-side do Netlify.
-- `MP_ACCESS_TOKEN`: access token do Mercado Pago.
-- `MP_WEBHOOK_SECRET`: segredo de assinatura configurado para as notificações de pagamento no Mercado Pago.
+O checkout desta branch aceita somente Pix por chave própria. O servidor calcula o preço a partir do catálogo do banco, cria o pedido e monta o BR Code com valor e identificador do pedido. O navegador não escolhe nem altera o valor.
 
-O Netlify fornece `URL` e, em deploys de preview, `DEPLOY_PRIME_URL`; uma URL de deploy também é necessária para registrar o webhook. O checkout Mercado Pago só é anunciado quando essas variáveis estão configuradas e o token foi validado. Para Pix por chave própria, configure e teste a chave no painel; os pedidos ficam pendentes até o administrador principal confirmar o recebimento.
+A confirmação é manual: o pedido fica pendente até o administrador principal conferir o crédito efetivo no aplicativo/extrato bancário e aprovar no painel. A imagem ou PDF de comprovante enviado pelo comprador, por si só, nunca comprova que o dinheiro entrou. Não existe conciliação bancária automática.
 
-O catálogo inicial cobra R$ 6,99 pelo QR simples e pelo QR personalizado, uma única vez por experiência; os preços podem ser ajustados em Admin > Preços e acesso. Criar e publicar a experiência e compartilhar seu link continuam gratuitos. O download é liberado somente depois da confirmação do pagamento ou do resgate de um código válido. O editor e as prévias continuam disponíveis quando o checkout está desabilitado.
+No Netlify, configure somente:
+- `SUPABASE_URL`: URL do projeto Supabase usado no frontend.
+- `SUPABASE_SERVICE_ROLE_KEY`: chave service-role do mesmo projeto, exclusivamente no ambiente server-side.
 
-O backend calcula preços e cupons no banco, cria cobranças PIX Mercado Pago com chave de idempotência e valida a assinatura do webhook. Antes de liberar o download, consulta o provedor e confere estado, meio de pagamento, referência, moeda, valor e vínculo da experiência ao proprietário. A volta do navegador ou a exibição de um código PIX não confirma pagamento. Nenhuma chave secreta fica no cliente; a função registra `/.netlify/functions/mp-webhook` como `notification_url`.
+No painel ADM > Pagamentos e Pix, informe tipo e chave Pix, titular, cidade e instruções. Ajuste os preços em Admin > Preços e acesso. O QR padrão e o personalizado são produtos avulsos; criar/publicar a experiência e compartilhar o link continuam gratuitos.
+
+A migração `supabase/pix-direct-only-migration.sql` força `mp_enabled=false` e `own_enabled=true` na configuração. Ela deve ser revisada e aplicada somente depois das migrações base `payments-pix-module.sql` e `catalog-access-module.sql`. Não execute no banco de produção sem backup e autorização.
+
+`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e o endpoint `mp-webhook` não fazem parte do novo fluxo de pagamento. Remova as variáveis antigas do Netlify apenas depois de confirmar que nenhum outro componente do projeto as utiliza.
 
 ## Execução e validação local
 O site é estático; para testar rotas e service worker, sirva a raiz do repositório por HTTP. Login, publicação na nuvem e checkout exigem Supabase e as configurações Netlify acima. O fluxo de pagamento deve ser testado com credenciais e usuário comprador de teste do Mercado Pago; não use pagamentos reais como teste.
