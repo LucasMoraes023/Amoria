@@ -7,7 +7,9 @@ const { crc16, buildPixPayload, checkPixPayload } = require('../netlify/lib/pix'
 process.env.SUPABASE_URL = 'https://fake.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
 process.env.MP_ACCESS_TOKEN = 'mp-token';
+process.env.MP_WEBHOOK_SECRET = 'test-webhook-secret';
 process.env.URL = 'https://amoria.test';
+const WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET;
 const L = require('../netlify/lib/payments');
 const createPayment = require('../netlify/functions/create-payment').handler;
 const webhook = require('../netlify/functions/mp-webhook').handler;
@@ -18,19 +20,27 @@ const UID = '11111111-1111-4111-8111-111111111111', ADMIN = '22222222-2222-4222-
 const EXP = '33333333-3333-4333-8333-333333333333';
 let db, mp, calls;
 function reset(over = {}) {
+  process.env.MP_WEBHOOK_SECRET = WEBHOOK_SECRET;
   db = {
-    experiences: [{ id: EXP, owner: UID, qr_custom_paid: false, content: { qrCustom: true } }],
+    experiences: [
+      { id: EXP, owner: UID, qr_custom_paid: false, content: { qrCustom: true } },
+      { id: '44444444-4444-4444-8444-444444444444', owner: UID, qr_custom_paid: false, content: { qrCustom: true } },
+      { id: '55555555-5555-4555-8555-555555555555', owner: UID, qr_custom_paid: false, content: { qrCustom: true } },
+      { id: '66666666-6666-4666-8666-666666666666', owner: UID, qr_custom_paid: false, content: { qrCustom: true } }
+    ],
     payments: [], payment_events: [],
     settings: [{ key: 'billing', value: { qr_custom_cents: 699 } }],
     payment_settings: [{ slot: true, data: { mp_enabled: true, own_enabled: true, key_type: 'email', key: 'loja@exemplo.com', holder: 'Lucas Moraes', city: 'São Paulo', display_name: '', bank: 'Banco X', instructions: 'Pague e aguarde.' } }],
     admin_identity: [{ user_id: ADMIN }],
     products: [
       { code: 'qr_custom', name: 'QR Code personalizado', price_cents: 699, active: true, wired: true, promo_percent: null },
-      { code: 'publish_experience', name: 'Publicar experiência', price_cents: 990, active: true, wired: true, promo_percent: null }
+      { code: 'qr_standard', name: 'Download do QR Code', price_cents: 699, active: true, wired: true, promo_percent: null },
+      { code: 'publish_experience', name: 'Publicar experiência', price_cents: 0, active: false, wired: true, promo_percent: null }
     ],
     coupons: [
       { id: 'c1', code: 'PCT10', kind: 'percent', value: 10, active: true, per_user_limit: 1 },
       { id: 'c2', code: 'GRATIS', kind: 'free', value: 0, active: true, per_user_limit: 5 },
+      { id: 'c4', code: 'AMORIA1', kind: 'free', value: 0, active: true, per_user_limit: 3, product_codes: ['qr_standard', 'qr_custom'] },
       { id: 'c3', code: 'UNICO', kind: 'fixed', value: 100, active: true, max_uses: 1, per_user_limit: 5 }
     ],
     entitlements: []
@@ -61,13 +71,18 @@ function fakeQuote(uid, code, coupon, strict, exclude) {
   const ccode = String(coupon || '').trim().toUpperCase();
   let cd = 0, cerr = null, cid = null;
   if (ccode) {
-    const c = db.coupons.find(x => x.code === ccode && x.active);
+    const c = db.coupons.find(x => x.code === ccode);
     if (!c) cerr = 'Cupom inválido';
+    else if (!c.active) cerr = 'Cupom inválido';
+    else if (c.starts_at && Date.parse(c.starts_at) > Date.now()) cerr = 'Este cupom ainda não está válido';
+    else if (c.ends_at && Date.parse(c.ends_at) <= Date.now()) cerr = 'Cupom expirado';
+    else if (c.allowed_user_ids && !c.allowed_user_ids.includes(uid)) cerr = 'Este cupom não está disponível para a sua conta';
     else {
       const used = db.payments.filter(o => o.id !== exclude && o.coupon_code === ccode && LIVE.includes(o.status)).length;
       const usedUser = db.payments.filter(o => o.id !== exclude && o.coupon_code === ccode && o.user_id === uid && LIVE.includes(o.status)).length;
       if (c.max_uses && used >= c.max_uses) cerr = 'Cupom esgotado';
       else if (uid && usedUser >= c.per_user_limit) cerr = 'Você já utilizou este cupom';
+      else if (c.product_codes && !c.product_codes.includes(code)) cerr = 'Este cupom não vale para este produto';
       else { cd = c.kind === 'free' ? aft : c.kind === 'percent' ? Math.floor(aft * c.value / 100) : Math.min(c.value, aft); cid = c.id; }
     }
   }
@@ -89,8 +104,8 @@ function fakeRpc(name, a) {
   if (name === 'create_order') {
     const q = fakeQuote(a.p_uid, a.p_code, a.p_coupon, true);
     if (!q.ok) return json(400, { code: 'P0001', message: q.error });
-    if (a.p_code === 'qr_custom' && !db.experiences.some(x => x.id === a.p_exp && x.owner === a.p_uid)) return json(400, { code: 'P0001', message: 'Experiência não encontrada' });
-    const exp = a.p_code === 'qr_custom' ? a.p_exp : null, free = q.final_cents === 0;
+    if (['qr_custom', 'qr_standard'].includes(a.p_code) && !db.experiences.some(x => x.id === a.p_exp && x.owner === a.p_uid)) return json(400, { code: 'P0001', message: 'Experiência não encontrada' });
+    const exp = ['qr_custom', 'qr_standard'].includes(a.p_code) ? a.p_exp : null, free = q.final_cents === 0;
     if (!free && db.payments.some(p => p.user_id === a.p_uid && p.product_code === a.p_code && (p.experience_id || null) === (exp || null) && p.status === 'pending')) return json(409, { code: '23505', message: 'duplicate key' });
     const row = { id: crypto.randomUUID(), user_id: a.p_uid, experience_id: exp, amount_cents: q.final_cents, purpose: a.p_code, product_code: a.p_code,
       original_cents: q.original_cents, discount_cents: q.discount_cents, coupon_code: q.coupon_code, provider: free ? 'free' : a.p_provider,
@@ -146,7 +161,7 @@ global.fetch = async (url, o = {}) => {
     if (mp.down) return json(503, { message: 'indisponível' });
     const b = JSON.parse(o.body); calls.mpCreate++;
     const id = ++mp.next;
-    mp.payments[id] = { id, status: 'pending', currency_id: 'BRL', transaction_amount: b.transaction_amount, external_reference: b.external_reference,
+    mp.payments[id] = { id, status: 'pending', payment_method_id: 'pix', currency_id: 'BRL', transaction_amount: b.transaction_amount, external_reference: b.external_reference,
       point_of_interaction: { transaction_data: { qr_code: '00020126MPCODE' + id, qr_code_base64: 'QkFTRTY0' } } };
     return json(201, mp.payments[id]);
   }
@@ -236,9 +251,49 @@ test('não permite comprar sem escolher QR personalizado', async () => {
   reset(); db.experiences[0].content = { qrCustom: false };
   assert.equal((await post({ expId: EXP, method: 'mercadopago' })).statusCode, 403);
 });
+test('checkout exige a assinatura do webhook antes de abrir o Mercado Pago', async () => {
+  reset(); delete process.env.MP_WEBHOOK_SECRET;
+  const methods = B(await createPayment({ httpMethod: 'GET', headers: {} })).methods;
+  assert.equal(methods.mercadopago, false);
+  assert.equal((await post({ expId: EXP, method: 'mercadopago' })).statusCode, 503);
+});
+test('QR normal é um produto pago por experiência e só é liberado após confirmação', async () => {
+  reset();
+  const created = B(await post({ product: 'qr_standard', expId: EXP, method: 'mercadopago' }));
+  assert.equal(created.amount, 699);
+  assert.equal(db.payments[0].product_code, 'qr_standard');
+  assert.equal(B(await post({ product: 'qr_standard', expId: EXP, action: 'status' })).paid, false);
+  const id = +Object.keys(mp.payments).pop();
+  mp.payments[id].status = 'approved';
+  assert.equal((await hook(id)).statusCode, 200);
+  assert.equal(B(await post({ product: 'qr_standard', expId: EXP, action: 'status' })).paid, true);
+  assert.equal(db.experiences[0].qr_custom_paid, false);
+});
+test('AMORIA1 permite três resgates combinados por usuário para QR normal e personalizado', async () => {
+  reset();
+  const downloads = [
+    { product: 'qr_custom', expId: EXP },
+    { product: 'qr_standard', expId: '44444444-4444-4444-8444-444444444444' },
+    { product: 'qr_custom', expId: '55555555-5555-4555-8555-555555555555' }
+  ];
+  for (const download of downloads) {
+    const r = await post({ ...download, coupon: 'amoria1' });
+    assert.equal(r.statusCode, 200);
+    assert.equal(B(r).free, true);
+  }
+  const denied = await post({ product: 'qr_standard', expId: '66666666-6666-4666-8666-666666666666', coupon: 'AMORIA1' });
+  assert.equal(denied.statusCode, 422);
+  assert.match(B(denied).error, /já utilizou/);
+  assert.equal(db.payments.filter(p => p.coupon_code === 'AMORIA1').length, 3);
+  assert.equal(calls.mpCreate, 0);
+});
 
 // ---------- Webhook ----------
-const hook = (id, extra = {}) => webhook({ httpMethod: 'POST', headers: {}, queryStringParameters: { 'data.id': String(id), type: 'payment' }, body: '{}', ...extra });
+const hook = (id, extra = {}) => {
+  const requestId = 'request-' + id, timestamp = '1700000000';
+  const headers = { 'x-request-id': requestId, 'x-signature': `ts=${timestamp},v1=${sign(process.env.MP_WEBHOOK_SECRET || '', String(id), requestId, timestamp)}`, ...(extra.headers || {}) };
+  return webhook({ httpMethod: 'POST', headers, queryStringParameters: { 'data.id': String(id), type: 'payment' }, body: '{}', ...extra, headers });
+};
 async function buyMp() { await post({ expId: EXP, method: 'mercadopago' }); return +Object.keys(mp.payments).pop(); }
 
 test('NÃO libera antes da confirmação; libera após aprovação válida; notificação duplicada não repete efeitos', async () => {
@@ -376,18 +431,12 @@ test('produto desativado ou inexistente não pode ser comprado', async () => {
   assert.equal((await post({ product: 'hackeado', expId: EXP })).statusCode, 400);
   assert.equal(db.payments.length, 0);
 });
-test('publicação paga: pedido sem experiência, liberação só após a confirmação, crédito reconhecido', async () => {
+test('publicação não é um produto de checkout, mesmo que o navegador peça', async () => {
   reset();
   const r = await post({ product: 'publish_experience', method: 'mercadopago' });
-  const b = B(r);
-  assert.equal(r.statusCode, 200); assert.equal(b.amount, 990);
-  assert.equal(db.payments[0].experience_id, null); assert.equal(db.payments[0].product_code, 'publish_experience');
-  assert.equal(B(await post({ product: 'publish_experience', action: 'status' })).paid, false);
-  const id = +Object.keys(mp.payments).pop(); mp.payments[id].status = 'approved';
-  assert.equal(B(await post({ product: 'publish_experience', action: 'status' })).paid, true);
-  assert.equal(db.entitlements.length, 1); assert.equal(db.experiences[0].qr_custom_paid, false);
-  assert.equal(B(await post({ product: 'publish_experience', method: 'mercadopago' })).paid, true);
-  assert.equal(db.payments.length, 1);
+  assert.equal(r.statusCode, 400);
+  assert.match(B(r).error, /Produto inválido/);
+  assert.equal(db.payments.length, 0);
 });
 test('webhook cura entrega pendente: pagamento já aprovado mas não entregue é entregue uma única vez', async () => {
   reset(); const id = await buyMp();
@@ -396,10 +445,10 @@ test('webhook cura entrega pendente: pagamento já aprovado mas não entregue é
   await hook(id); await hook(id);
   assert.equal(db.experiences[0].qr_custom_paid, true); assert.equal(calls.deliver, 1); assert.equal(db.entitlements.length, 1);
 });
-test('pagamento da publicação aprovado pelo webhook cria o crédito sem mexer no QR personalizado', async () => {
-  reset();
-  await post({ product: 'publish_experience', method: 'mercadopago' });
-  const id = +Object.keys(mp.payments).pop(); mp.payments[id].status = 'approved';
-  assert.equal((await hook(id)).statusCode, 200);
-  assert.equal(db.entitlements[0].product_code, 'publish_experience'); assert.equal(db.experiences[0].qr_custom_paid, false);
+test('notificação assinada sem configuração de assinatura não atualiza pedidos', async () => {
+  reset(); const id = await buyMp(); mp.payments[id].status = 'approved';
+  delete process.env.MP_WEBHOOK_SECRET;
+  assert.equal((await hook(id)).statusCode, 503);
+  assert.equal(db.payments[0].status, 'pending');
+  assert.equal(db.experiences[0].qr_custom_paid, false);
 });

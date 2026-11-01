@@ -1,12 +1,12 @@
 // Checkout: cria pedido e cobrança Pix (Mercado Pago ou chave própria) para qualquer produto conectado.
 // O preço, o desconto e o cupom são calculados NO BANCO; o navegador só informa produto, método e código do cupom.
-// Variáveis no Netlify: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MP_ACCESS_TOKEN (e MP_WEBHOOK_SECRET, recomendada)
+// Variáveis no Netlify: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET
 const { buildPixPayload } = require('../lib/pix');
 const L = require('../lib/payments');
 const { R, sb, rows } = L;
 
 const ACTIVE = 'status=in.(pending,in_process)';
-const PRODUCTS = { qr_custom: { needsExp: true }, publish_experience: { needsExp: false } };
+const PRODUCTS = { qr_standard: { needsExp: true }, qr_custom: { needsExp: true } };
 
 exports.handler = async ev => {
   const e = L.env();
@@ -16,7 +16,10 @@ exports.handler = async ev => {
       const q = e.SU && e.SK ? await L.quote(null, 'qr_custom', null, false) : null;
       const price = q && q.ok ? q.final_cents : null;
       return R(200, { enabled: price !== null && (m.mercadopago || m.own_key || price === 0), methods: m, price_cents: price });
-    } catch { return R(200, { enabled: false, methods: { mercadopago: false, own_key: false } }); }
+    } catch (err) {
+      console.error('[create-payment] failed to read payment configuration:', err.message || 'unknown error');
+      return R(503, { enabled: false, methods: { mercadopago: false, own_key: false }, error: 'Não foi possível consultar a configuração de pagamento.' });
+    }
   }
   if (ev.httpMethod !== 'POST') return R(405, { error: 'Método inválido' });
   if (!e.SU || !e.SK) return R(503, { error: 'O pagamento ainda não está configurado' });
@@ -36,8 +39,8 @@ exports.handler = async ev => {
     }
     const scope = `user_id=eq.${u.id}&product_code=eq.${product}&` + (def.needsExp ? `experience_id=eq.${expId}` : 'experience_id=is.null');
     const entitled = async () => {
-      if (def.needsExp) return !!(await rows(await sb(`experiences?id=eq.${expId}&select=qr_custom_paid`)))[0]?.qr_custom_paid;
-      const ents = await rows(await sb(`entitlements?user_id=eq.${u.id}&product_code=eq.${product}&revoked_at=is.null&select=quantity,consumed,expires_at`));
+      if (product === 'qr_custom' && exp.qr_custom_paid) return true;
+      const ents = await rows(await sb(`entitlements?user_id=eq.${u.id}&product_code=eq.${product}&experience_id=eq.${expId}&revoked_at=is.null&select=quantity,consumed,expires_at`));
       return ents.some(x => x.consumed < x.quantity && (!x.expires_at || new Date(x.expires_at) > new Date()));
     };
 
@@ -53,7 +56,7 @@ exports.handler = async ev => {
     }
 
     if (await entitled()) return R(200, { paid: true });
-    if (def.needsExp && (!exp.content || exp.content.qrCustom !== true)) return R(403, { error: 'Selecione o QR personalizado antes de comprar' });
+    if (product === 'qr_custom' && (!exp.content || exp.content.qrCustom !== true)) return R(403, { error: 'Selecione o QR personalizado antes de comprar' });
 
     const findPending = async () => (await rows(await sb(`payments?${scope}&${ACTIVE}&select=id,provider,provider_ref,amount_cents,status,coupon_code`)))[0];
     let payment = await findPending();
@@ -149,12 +152,17 @@ exports.handler = async ev => {
       await L.logEvent(payment.id, 'mp-error:' + payment.id + ':' + Date.now(), payment.status, 'error', 'checkout', 'Falha na API: ' + String(p.message || r.status).slice(0, 120));
       return R(502, { error: 'O Mercado Pago não respondeu. Tente novamente em instantes.' });
     }
+    if (!p.id || p.status !== 'pending' || p.payment_method_id !== 'pix' || p.external_reference !== payment.id ||
+        p.currency_id !== 'BRL' || Math.round(Number(p.transaction_amount) * 100) !== payment.amount_cents) {
+      return R(502, { error: 'O Mercado Pago retornou uma cobrança diferente do pedido' });
+    }
     const saved = await sb(`payments?id=eq.${payment.id}`, { method: 'PATCH', body: JSON.stringify({ provider_ref: String(p.id), updated_at: new Date().toISOString() }) });
     if (!saved.ok) return R(502, { error: 'O pagamento foi criado; tente novamente para recuperar o QR Pix' });
     const t = p.point_of_interaction && p.point_of_interaction.transaction_data;
     if (!t || !t.qr_code) return R(502, { error: 'O Mercado Pago não devolveu o código Pix. Tente novamente.' });
     return R(200, { ...summary, method: 'mercadopago', status: 'pending', code: t.qr_code, qr: t.qr_code_base64 });
   } catch (err) {
+    console.error('[create-payment] request failed:', err.message || 'unknown error');
     return R(500, { error: 'Falha ao gerar o Pix' });
   }
 };

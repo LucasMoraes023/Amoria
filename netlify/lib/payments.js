@@ -1,5 +1,5 @@
 // Utilidades compartilhadas das funções de pagamento (Netlify).
-// Variáveis de ambiente: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET (recomendada)
+// Variáveis de ambiente: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET
 const crypto = require('crypto');
 const { buildPixPayload } = require('./pix');
 
@@ -16,7 +16,12 @@ const sb = (p, o = {}) => {
   const e = env();
   return fetch(e.SU + '/rest/v1/' + p, { ...o, headers: { apikey: e.SK, Authorization: 'Bearer ' + e.SK, 'Content-Type': 'application/json', Prefer: 'return=representation', ...o.headers } });
 };
-const rows = async r => { try { const j = await r.json(); return Array.isArray(j) ? j : []; } catch { return []; } };
+const rows = async r => {
+  if (!r.ok) throw new Error('Falha ao consultar o banco de dados');
+  const j = await r.json();
+  if (!Array.isArray(j)) throw new Error('Resposta inesperada do banco de dados');
+  return j;
+};
 const mpFetch = (path, o = {}) => fetch('https://api.mercadopago.com' + path, { ...o, headers: { Authorization: 'Bearer ' + env().MP, ...o.headers } });
 
 async function getUser(ev) {
@@ -35,7 +40,7 @@ async function isPrimaryAdmin(userId) {
 const DEFAULT_CFG = { mp_enabled: true, own_enabled: false, key_type: '', key: '', holder: '', bank: '', city: '', display_name: '', instructions: '' };
 async function readConfig() {
   const r = await sb('payment_settings?slot=eq.true&select=data');
-  const [row] = r.ok ? await rows(r) : [];
+  const [row] = await rows(r);
   return { ...DEFAULT_CFG, ...((row && row.data) || {}) };
 }
 // Funções do banco (somente service role). O preço final SEMPRE é calculado no banco.
@@ -68,17 +73,18 @@ async function availableMethods() {
   if (!e.SU || !e.SK) return { mercadopago: false, own_key: false };
   const cfg = await readConfig();
   return {
-    mercadopago: !!(e.MP && e.SITE && cfg.mp_enabled && (await mpCheck()).ok),
+    mercadopago: !!(e.MP && e.WS && e.SITE && cfg.mp_enabled && (await mpCheck()).ok),
     own_key: ownReady(cfg)
   };
 }
 
 async function logEvent(paymentId, key, from, to, source, detail) {
-  await sb('payment_events?on_conflict=event_key', {
+  const response = await sb('payment_events?on_conflict=event_key', {
     method: 'POST',
     headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
     body: JSON.stringify({ payment_id: paymentId, event_key: key, from_status: from, to_status: to, source, detail })
   });
+  if (!response.ok) throw new Error('Falha ao registrar evento de pagamento');
 }
 
 // Estado do Mercado Pago -> estado interno
@@ -97,8 +103,9 @@ function mapMpStatus(p) {
 
 // Aplica um pagamento já CONSULTADO na API do Mercado Pago. Idempotente.
 async function applyMpPayment(p) {
-  const [pay] = await rows(await sb('payments?provider_ref=eq.' + encodeURIComponent(String(p.id)) + '&select=id,experience_id,amount_cents,purpose,status,provider,delivered_at'));
+  const [pay] = await rows(await sb('payments?provider_ref=eq.' + encodeURIComponent(String(p.id)) + '&select=id,experience_id,amount_cents,purpose,product_code,status,provider,delivered_at'));
   if (!pay || pay.provider !== 'mercadopago') return { ok: true, ignored: true };
+  if (!['qr_standard', 'qr_custom'].includes(pay.product_code || pay.purpose)) return { ok: true, ignored: true };
   const next = mapMpStatus(p), key = 'mp:' + p.id + ':' + next;
   const ref = String(p.external_reference);
   if (ref !== String(pay.id) && ref !== String(pay.experience_id)) {
@@ -106,9 +113,9 @@ async function applyMpPayment(p) {
     return { ok: true, mismatch: 'reference' };
   }
   if (next === 'approved') {
-    if (p.currency_id !== 'BRL' || Math.round(Number(p.transaction_amount) * 100) !== pay.amount_cents) {
-      await logEvent(pay.id, key + ':amount', pay.status, 'error', 'webhook', 'Valor ou moeda divergente; adicional não liberado');
-      return { ok: true, mismatch: 'amount' };
+    if (p.payment_method_id !== 'pix' || p.currency_id !== 'BRL' || Math.round(Number(p.transaction_amount) * 100) !== pay.amount_cents) {
+      await logEvent(pay.id, key + ':payment', pay.status, 'error', 'webhook', 'Meio de pagamento, valor ou moeda divergente; adicional não liberado');
+      return { ok: true, mismatch: 'payment' };
     }
     if (pay.status === 'approved') {
       if (pay.delivered_at) return { ok: true, duplicate: true };
