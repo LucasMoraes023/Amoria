@@ -72,5 +72,5 @@ async function logEvent(paymentId, key, from, to, source, detail) {
   if (!response.ok) throw new Error('Falha ao registrar evento de pagamento');
 }
 
-module.exports = { env, R, sb, rows, rpc, rpcJson, quote, getUser, isPrimaryAdmin, readConfig, mpCheck, ownReady,
+module.exports = { env, R, sb, rows, rpc, rpcJson, quote, getUser, isPrimaryAdmin, readConfig, ownReady,
   availableMethods, logEvent };
