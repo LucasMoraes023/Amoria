@@ -9,8 +9,8 @@ exports.handler = async ev => {
   const e = L.env();
   if (ev.httpMethod === 'GET') {
     try {
-      if (product === 'publish_experience') await L.ensurePublishProduct();
-    const cfg = await L.readConfig();
+      await L.ensurePublishProduct();
+      const cfg = await L.readConfig();
       const ready = !!(e.SU && e.SK && L.ownReady(cfg));
       if (ready) await L.ensurePublishProduct();
       const q = ready ? await L.quote(null, 'publish_experience', null, false) : null;
