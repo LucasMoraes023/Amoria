@@ -175,8 +175,7 @@ declare e public.experiences%rowtype; price int;
 begin
   select * into e from public.experiences where slug=p_slug;
   if not found or exists(select 1 from public.profiles where id=e.owner and blocked) then return null; end if;
-  select coalesce((value->>'price_cents')::int,0) into price from public.settings where key='billing';
-  if coalesce(price,0)>0 and not e.paid and not exists(select 1 from public.profiles where id=e.owner and (plan='premium' or role='admin')) then
+  if not e.paid and not exists(select 1 from public.profiles where id=e.owner and (plan='premium' or role='admin')) then
     return jsonb_build_object('unpaid',true);
   end if;
   if e.at is not null and e.at>now() then return jsonb_build_object('at', floor(extract(epoch from e.at)*1000)); end if;
