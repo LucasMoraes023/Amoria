@@ -206,10 +206,17 @@ begin
     values(o.user_id,o.product_code,o.experience_id,
       case when o.provider<>'free' then 'payment' when o.coupon_id is not null then 'coupon' else 'promo' end,o.id,1)
     on conflict (order_id) do nothing;
-  if o.product_code='qr_custom' and o.experience_id is not null then
-    update public.experiences set qr_custom_paid=true where id=o.experience_id;
-  elsif o.product_code='publish_experience' and o.experience_id is not null then
-    update public.experiences set paid=true, paid_at=now() where id=o.experience_id; end if;
+  if o.experience_id is not null then
+    if o.product_code='qr_custom' then
+      update public.experiences set qr_custom_paid=true where id=o.experience_id;
+    elsif o.product_code='publish_experience' then
+      update public.experiences
+         set paid=true,
+             paid_at=now(),
+             qr_custom_paid=case when coalesce((content->>'qrCustom')::boolean,false) then true else qr_custom_paid end
+       where id=o.experience_id;
+    end if;
+  end if;
   update public.payments set delivered_at=now(),updated_at=now() where id=o.id;
   insert into public.payment_events(payment_id,event_key,from_status,to_status,source,detail)
     values(o.id,'delivered:'||o.id,o.status,o.status,'system','Recurso liberado ao usuário') on conflict (event_key) do nothing;
