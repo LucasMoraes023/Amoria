@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="t d">
+<title id="t">AMORIA</title><desc id="d">Logotipo AMORIA com monograma A, laço em forma de coração e detalhes magenta sobre fundo escuro.</desc>
+<defs>
+ <radialGradient id="bg" cx="50%" cy="38%" r="72%"><stop offset="0" stop-color="#210b17"/><stop offset=".65" stop-color="#0b0508"/><stop offset="1" stop-color="#030204"/></radialGradient>
+ <linearGradient id="pink" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd5e2"/><stop offset=".35" stop-color="#ff4f98"/><stop offset=".7" stop-color="#d91467"/><stop offset="1" stop-color="#ff9bc3"/></linearGradient>
+ <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".45" stop-color="#d7d5da"/><stop offset="1" stop-color="#918f97"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+</defs>
+<rect width="800" height="800" rx="150" fill="url(#bg)"/>
+<circle cx="400" cy="400" r="350" fill="none" stroke="#e91d70" stroke-opacity=".22" stroke-width="3"/>
+<circle cx="400" cy="400" r="338" fill="none" stroke="url(#pink)" stroke-width="5" opacity=".9" filter="url(#glow)"/>
+<path d="M115 210 Q400 55 685 210" fill="none" stroke="#ff3f8e" stroke-opacity=".16" stroke-width="55" filter="url(#soft)"/>
+<g transform="translate(0 12)">
+ <path d="M400 128 L278 390 H328 L400 228 L472 390 H522 Z" fill="url(#silver)"/>
+ <path d="M300 368 C220 326 205 420 285 430 C350 438 395 401 431 369 C470 334 520 305 575 336 C630 367 600 425 548 430 C492 435 448 396 400 365 C356 336 322 325 300 368 Z" fill="url(#pink)" filter="url(#glow)"/>
+ <path d="M400 228 L366 305 L400 365 L434 305 Z" fill="#0b0508"/>
+ <path d="M392 140 L400 122 L408 140 L400 158 Z" fill="#fff" opacity=".85"/>
+</g>
+<g fill="url(#silver)" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="300" letter-spacing="17" text-anchor="middle">
+ <text x="400" y="565">AMORIA</text>
+</g>
+<g fill="#f7b4d0" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="600" letter-spacing="5" text-anchor="middle">
+ <text x="400" y="616">CRIE • VIVA • COMPARTILHE</text>
+</g>
+<path d="M245 665 H365 M435 665 H555" stroke="#ed3b82" stroke-width="2"/>
+<path d="M400 680 C385 655 350 669 365 692 C378 712 400 724 400 724 C400 724 422 712 435 692 C450 669 415 655 400 680Z" fill="none" stroke="url(#pink)" stroke-width="5"/>
+</svg>
