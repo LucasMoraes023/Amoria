@@ -56,6 +56,28 @@ const ownReady = cfg => {
   try { buildPixPayload({ key: cfg.key, name: cfg.display_name || cfg.holder, city: cfg.city, amountCents: 100, txid: 'TESTE' }); return true; }
   catch { return false; }
 };
+async function ensurePublishProduct() {
+  const r = await sb('products?code=eq.publish_experience&select=id,code,price_cents,active,wired,lock_stage');
+  if (!r.ok) throw new Error('Falha ao verificar o produto de liberação');
+  const a = await rows(r);
+  if (!a.length) {
+    const ins = await sb('products', { method:'POST', headers:{Prefer:'return=representation'}, body:JSON.stringify({
+      code:'publish_experience', name:'Liberar experiência', description:'Liberação da experiência com link e QR Code.',
+      price_cents:699, active:true, wired:true, lock_stage:'publish', sort:20
+    })});
+    if (!ins.ok) throw new Error('Produto de liberação não está configurado no catálogo');
+    return;
+  }
+  const p=a[0];
+  if (!p.active || !p.wired || p.lock_stage!=='publish' || Number(p.price_cents)<100) {
+    const price=Math.max(100,Number(p.price_cents)||699);
+    const up=await sb('products?id=eq.'+encodeURIComponent(p.id),{method:'PATCH',body:JSON.stringify({
+      price_cents:price,active:true,wired:true,lock_stage:'publish',updated_at:new Date().toISOString()
+    })});
+    if(!up.ok) throw new Error('Produto de liberação está desativado no catálogo');
+  }
+}
+
 async function availableMethods() {
   const e = env();
   if (!e.SU || !e.SK) return { pix_manual: false };
@@ -72,5 +94,5 @@ async function logEvent(paymentId, key, from, to, source, detail) {
   if (!response.ok) throw new Error('Falha ao registrar evento de pagamento');
 }
 
-module.exports = { env, R, sb, rows, rpc, rpcJson, quote, getUser, isPrimaryAdmin, readConfig, ownReady,
+module.exports = { env, R, sb, rows, rpc, rpcJson, quote, ensurePublishProduct, getUser, isPrimaryAdmin, readConfig, ownReady,
   availableMethods, logEvent };
