@@ -44,9 +44,9 @@ on conflict (code) do nothing;
 update public.products set price_cents=greatest(price_cents,100),active=true,wired=true,lock_stage='download',updated_at=now()
   where code in ('qr_custom','qr_standard');
 insert into public.products(code,name,description,price_cents,active,wired,lock_stage,sort)
-values ('publish_experience','Publicar experiência','Publicação da experiência com link e QR Code funcionais.',0,false,true,'publish',20)
-on conflict (code) do nothing;
-update public.products set price_cents=0,active=false,lock_stage='none',updated_at=now()
+values ('publish_experience','Publicar experiência','Publicação da experiência com link e QR Code funcionais.',699,true,true,'publish',20)
+on conflict (code) do update set name=excluded.name,description=excluded.description,price_cents=greatest(public.products.price_cents,100),active=true,wired=true,lock_stage='publish',sort=20,updated_at=now();
+update public.products set price_cents=greatest(price_cents,100),active=true,wired=true,lock_stage='publish',updated_at=now()
   where code='publish_experience';
 
 -- ========== 2) Cupons ==========
@@ -102,10 +102,10 @@ alter table public.coupon_redemptions enable row level security;
 revoke all on public.coupon_redemptions from anon, authenticated;
 
 insert into public.coupons(code,kind,value,product_codes,max_uses,per_user_limit,active,note)
-values('AMORIA1','free',0,array['qr_standard','qr_custom'],null,3,true,'Até 3 downloads gratuitos por usuário; válido para QR normal e personalizado.')
-on conflict (code) do update set kind='free',value=0,product_codes=array['qr_standard','qr_custom'],
+values('AMORIA1','free',0,array['qr_standard','qr_custom','publish_experience'],null,3,true,'Até 3 resgates gratuitos por usuário; válido para publicação e QR normal/personalizado.')
+on conflict (code) do update set kind='free',value=0,product_codes=array['qr_standard','qr_custom','publish_experience'],
   max_uses=null,per_user_limit=3,starts_at=null,ends_at=null,allowed_user_ids=null,active=true,
-  note='Até 3 downloads gratuitos por usuário; válido para QR normal e personalizado.',deleted_at=null;
+  note='Até 3 resgates gratuitos por usuário; válido para publicação e QR normal/personalizado.',deleted_at=null;
 
 -- ========== 4) Direitos de acesso (entitlements) ==========
 create table if not exists public.entitlements (
