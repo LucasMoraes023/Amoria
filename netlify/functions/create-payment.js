@@ -79,7 +79,7 @@ exports.handler = async ev => {
     if (!payment) return R(409, { error: 'Já existe um pedido em andamento. Tente novamente.' });
     if (free) return R(200, { paid: await entitled(), free: true, orderId: payment.id });
     const code = buildPixPayload({ key: cfg.key, name: cfg.display_name || cfg.holder, city: cfg.city, amountCents: payment.amount_cents, txid: 'AMR' + payment.id.replace(/-/g, '').slice(0, 22) });
-    return R(200, { orderId: payment.id, amount: payment.amount_cents, original: q.original_cents, discount: q.discount_cents, coupon: q.coupon_code || null, product: q.product_name, method: 'pix_manual', status: payment.status, code, recipient: cfg.display_name || cfg.holder, bank: cfg.bank || '', instructions: cfg.instructions || '', manual_confirmation: true });
+    return R(200, { orderId: payment.id, amount: payment.amount_cents, original: q.original_cents, discount: q.discount_cents, coupon: q.coupon_code || null, product: q.product_name, method: 'pix_manual', status: payment.status, code, recipient: cfg.whatsapp || '', bank: cfg.bank || '', instructions: cfg.instructions || '', manual_confirmation: true, recipient_name: cfg.display_name || cfg.holder });
   } catch (err) {
     console.error('[create-payment] failed:', err.message || 'unknown');
     return R(500, { error: 'Falha ao gerar o Pix' });
