@@ -12,7 +12,8 @@ exports.handler = async ev => {
       if (product === 'publish_experience') await L.ensurePublishProduct();
     const cfg = await L.readConfig();
       const ready = !!(e.SU && e.SK && L.ownReady(cfg));
-      const q = ready ? await L.quote(null, 'qr_custom', null, false) : null;
+      if (ready) await L.ensurePublishProduct();
+      const q = ready ? await L.quote(null, 'publish_experience', null, false) : null;
       return R(200, { enabled: !!(q && q.ok), methods: { pix_manual: ready }, price_cents: q && q.ok ? q.final_cents : null });
     } catch (err) {
       console.error('[create-payment] config:', err.message || 'unknown');
