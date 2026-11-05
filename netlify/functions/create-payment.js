@@ -9,7 +9,8 @@ exports.handler = async ev => {
   const e = L.env();
   if (ev.httpMethod === 'GET') {
     try {
-      const cfg = await L.readConfig();
+      if (product === 'publish_experience') await L.ensurePublishProduct();
+    const cfg = await L.readConfig();
       const ready = !!(e.SU && e.SK && L.ownReady(cfg));
       const q = ready ? await L.quote(null, 'qr_custom', null, false) : null;
       return R(200, { enabled: !!(q && q.ok), methods: { pix_manual: ready }, price_cents: q && q.ok ? q.final_cents : null });
