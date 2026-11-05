@@ -83,7 +83,7 @@ returns jsonb language plpgsql security definer set search_path=public as $$
 begin
   if not public.is_primary_admin() then raise exception 'forbidden'; end if;
   return jsonb_build_object('mp_enabled',true,'own_enabled',false,'key_type','','key','',
-    'holder','','bank','','city','','display_name','','instructions','')
+    'holder','','bank','','city','','display_name','','instructions','','whatsapp','')
     || coalesce((select data from public.payment_settings where slot),'{}'::jsonb);
 end $$;
 
@@ -130,7 +130,8 @@ begin
   out:=jsonb_build_object('mp_enabled',mp,'own_enabled',own,'key_type',kt,'key',k,'holder',holder,
     'bank',left(btrim(coalesce(p->>'bank','')),60),'city',city,
     'display_name',left(btrim(coalesce(p->>'display_name','')),25),
-    'instructions',left(btrim(coalesce(p->>'instructions','')),500));
+    'instructions',left(btrim(coalesce(p->>'instructions','')),500),
+    'whatsapp',left(btrim(coalesce(p->>'whatsapp','')),20));
   insert into public.payment_settings(slot,data) values(true,out)
     on conflict(slot) do update set data=excluded.data, updated_at=now();
   insert into public.admin_audit(actor,action,record_type,record_id)
