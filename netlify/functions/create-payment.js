@@ -3,7 +3,7 @@ const { buildPixPayload } = require('../lib/pix');
 const L = require('../lib/payments');
 const { R, sb, rows } = L;
 const ACTIVE = 'status=in.(pending,in_process)';
-const PRODUCTS = { qr_standard: { needsExp: true }, qr_custom: { needsExp: true } };
+const PRODUCTS = { qr_standard: { needsExp: true }, qr_custom: { needsExp: true }, publish_experience: { needsExp: false } };
 
 exports.handler = async ev => {
   const e = L.env();
