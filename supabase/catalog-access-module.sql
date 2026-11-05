@@ -207,7 +207,9 @@ begin
       case when o.provider<>'free' then 'payment' when o.coupon_id is not null then 'coupon' else 'promo' end,o.id,1)
     on conflict (order_id) do nothing;
   if o.product_code='qr_custom' and o.experience_id is not null then
-    update public.experiences set qr_custom_paid=true where id=o.experience_id; end if;
+    update public.experiences set qr_custom_paid=true where id=o.experience_id;
+  elsif o.product_code='publish_experience' and o.experience_id is not null then
+    update public.experiences set paid=true, paid_at=now() where id=o.experience_id; end if;
   update public.payments set delivered_at=now(),updated_at=now() where id=o.id;
   insert into public.payment_events(payment_id,event_key,from_status,to_status,source,detail)
     values(o.id,'delivered:'||o.id,o.status,o.status,'system','Recurso liberado ao usuário') on conflict (event_key) do nothing;
@@ -238,7 +240,7 @@ begin
   q:=public.compute_quote(p_uid,p_code,p_coupon,true);
   if not (q->>'ok')::boolean then raise exception '%', q->>'error'; end if;
   select * into p from public.products where code=p_code;
-  if p_code in ('qr_custom','qr_standard') then
+  if p_code in ('qr_custom','qr_standard','publish_experience') then
     if p_exp is null or not exists(select 1 from public.experiences where id=p_exp and owner=p_uid) then
       raise exception 'Experiência não encontrada'; end if;
   else p_exp:=null; end if;
