@@ -16,7 +16,7 @@ let db, prov, log;
 const base = () => ({ slot: true, text_enabled: true, text_model: 'claude-haiku-5-5', max_tokens: 800, daily_text_limit: 3, image_enabled: true, image_model: 'gpt-image-1', daily_image_limit: 2, budget_cents: null });
 function reset(over = {}) {
   db = { settings: { ...base(), ...over }, usage: [], seq: 0, admin: [{ user_id: ADMIN }], stored: [] };
-  prov = { anthropic: { status: 200, text: 'Meu amor, você é minha casa.', stop: 'end_turn', usage: { input_tokens: 120, output_tokens: 80 } }, image: { status: 200, b64: Buffer.alloc(500, 7).toString('base64') }, models: 200, storage: 200, bgStatus: 202 };
+  prov = { anthropic: { status: 200, text: 'Meu amor, você é minha casa.', stop: 'end_turn', usage: { input_tokens: 120, output_tokens: 80 } }, image: { status: 200, b64: Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(496, 7)]).toString('base64') }, models: 200, storage: 200, bgStatus: 202 };
   log = { anthropic: [], image: [], bg: [], upload: [] };
   process.env.ANTHROPIC_API_KEY = KEY_TEXT; process.env.OPENAI_API_KEY = KEY_IMG; process.env.URL = 'https://amoria.test';
 }
@@ -184,8 +184,9 @@ test('imagem: pedido vira tarefa assinada em segundo plano, é gerada, salva na 
   assert.equal(log.bg.length, 1); assert.ok(log.bg[0].h['x-amoria-signature'].length === 64);
   assert.equal(log.image.length, 1); const im = log.image[0];
   assert.equal(im.h.Authorization, 'Bearer ' + KEY_IMG); assert.equal(im.body.model, 'gpt-image-1'); assert.equal(im.body.size, '1024x1536'); assert.equal(im.body.n, 1);
+  assert.equal(im.body.output_format, 'jpeg', 'o bucket photos só aceita JPEG: pede JPEG ao provedor');
   assert.ok(!/Ana|nua|desenhe/i.test(im.body.prompt)); assert.match(im.body.prompt, /sem pessoas/);
-  assert.equal(log.upload.length, 1); assert.match(log.upload[0].url, new RegExp('/photos/' + UID + '/ai/[0-9a-f-]{36}\\.png$')); assert.equal(log.upload[0].h['x-upsert'], 'false');
+  assert.equal(log.upload.length, 1); assert.match(log.upload[0].url, new RegExp('/photos/' + UID + '/ai/[0-9a-f-]{36}\\.jpg$')); assert.equal(log.upload[0].h['x-upsert'], 'false'); assert.equal(log.upload[0].h['content-type'], 'image/jpeg');
   const j = await jobOf('u1', b.job); assert.equal(j.status, 'ok'); assert.match(j.url, /\/storage\/v1\/object\/public\/photos\//);
   assert.equal(db.usage[0].status, 'ok');
 });
@@ -209,6 +210,15 @@ test('imagem: sem chave, desligada ou sem URL do site → indisponível; limite 
   reset({ image_enabled: false }); assert.equal((await post({ tool: 'fundo_imagem' })).statusCode, 503);
   reset(); await post({ tool: 'fundo_imagem' }); await post({ tool: 'fundo_imagem' }); assert.equal((await post({ tool: 'fundo_imagem' })).statusCode, 429);
   assert.equal((await post({ tool: 'carta' })).statusCode, 200);
+});
+test('imagem: PNG (modelo que não entrega JPEG) ou arquivo acima de 2 MB são recusados ANTES do envio, com erro claro', async () => {
+  reset(); prov.image.b64 = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.alloc(496, 7)]).toString('base64');
+  let b = B(await post({ tool: 'fundo_imagem' })); const j = await jobOf('u1', b.job);
+  assert.equal(j.status, 'error'); assert.equal(log.upload.length, 0, 'não tenta enviar PNG para o bucket de JPEG');
+  assert.match(db.usage[0].error, /image\/png/); assert.equal(quota(UID).image_used, 0);
+  reset(); prov.image.b64 = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(1950000, 7)]).toString('base64');
+  b = B(await post({ tool: 'fundo_imagem' })); assert.equal((await jobOf('u1', b.job)).status, 'error');
+  assert.equal(log.upload.length, 0); assert.match(db.usage[0].error, /2 MB/);
 });
 test('imagem: tarefa travada por mais de 6 minutos é encerrada com erro', async () => {
   reset(); db.usage.push({ id: 7, user_id: UID, kind: 'image', status: 'pending', created: Date.now() - 7 * 60 * 1000 });

@@ -1,0 +1,8 @@
+Cópia de segurança dos arquivos ORIGINAIS que foram alterados ou removidos nesta atualização
+(pacote amoria-atualizacao-1.zip + repositório LucasMoraes023/Amoria, commit 4614b2b).
+
+Cada arquivo tem o mesmo caminho de origem com o sufixo .bak (para não ser executado, publicado nem varrido por engano).
+Para restaurar um arquivo: copie-o para o caminho original e apague o ".bak" do nome.
+
+Atenção: o index.html original tem o JavaScript embutido (não existia app.js) e usa bibliotecas de CDN.
+Para voltar totalmente ao site antigo, restaure também netlify.toml e sw.js e remova app.js, vendor/ e scripts/.

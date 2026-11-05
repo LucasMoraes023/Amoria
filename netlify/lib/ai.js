@@ -124,7 +124,9 @@ async function withTimeout(ms, fn) {
   finally { clearTimeout(t); }
 }
 async function callAnthropic({ key, model, system, user, maxTokens, timeoutMs }) {
-  return withTimeout(timeoutMs || 8500, async signal => {
+  const envMs = parseInt(process.env.AI_TEXT_TIMEOUT_MS, 10);   // opcional: aumente (até 24000) se o timeout das Functions no Netlify for ampliado
+  const ms = timeoutMs || (Number.isFinite(envMs) ? Math.max(3000, Math.min(24000, envMs)) : 8500);
+  return withTimeout(ms, async signal => {
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', signal,
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] }) });
@@ -137,8 +139,11 @@ async function callAnthropic({ key, model, system, user, maxTokens, timeoutMs })
 }
 async function callOpenAIImage({ key, model, prompt, size, timeoutMs }) {
   return withTimeout(timeoutMs || 120000, async signal => {
+    // O bucket "photos" só aceita JPEG de até 2 MB. Os modelos gpt-image permitem escolher o formato de saída: pedimos JPEG.
+    const reqBody = { model, prompt, size, n: 1 };
+    if (/^gpt-image/i.test(model)) { reqBody.output_format = 'jpeg'; reqBody.output_compression = 85; }
     const r = await fetch('https://api.openai.com/v1/images/generations', { method: 'POST', signal,
-      headers: { Authorization: 'Bearer ' + key, 'content-type': 'application/json' }, body: JSON.stringify({ model, prompt, size, n: 1 }) });
+      headers: { Authorization: 'Bearer ' + key, 'content-type': 'application/json' }, body: JSON.stringify(reqBody) });
     let j = null; try { j = await r.json(); } catch { j = null; }
     if (!r.ok) throw mapStatus(r.status);
     const d = j && j.data && j.data[0];
@@ -147,8 +152,16 @@ async function callOpenAIImage({ key, model, prompt, size, timeoutMs }) {
     throw new ProviderError('A IA não devolveu uma imagem. Tente novamente.', 502, 'Resposta sem imagem');
   });
 }
+// Identifica o formato real pelos primeiros bytes (nunca confia no que o provedor diz).
+function sniffImage(b) {
+  if (!b || b.length < 12) return null;
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { type: 'image/jpeg', ext: 'jpg' };
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { type: 'image/png', ext: 'png' };
+  if (b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP') return { type: 'image/webp', ext: 'webp' };
+  return null;
+}
 const sign = (sk, job, uid) => crypto.createHmac('sha256', sk).update(job + ':' + uid).digest('hex');
 const sameSig = (a, b) => { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || '')); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 
 module.exports = { STYLES, OCCASIONS, TONES, LENGTHS, PALETTES, ELEMENTS, ORIENT, STUDIO_MODELS, TOOLS, SYSTEM, parseInput, buildPrompt, imagePrompt, imageSize,
-  validateStructured, extractJson, callAnthropic, callOpenAIImage, ProviderError, mapStatus, sign, sameSig, clean };
+  validateStructured, extractJson, callAnthropic, callOpenAIImage, sniffImage, ProviderError, mapStatus, sign, sameSig, clean };

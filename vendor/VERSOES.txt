@@ -1,0 +1,7 @@
+Bibliotecas de terceiros copiadas para o repositório (sem CDN, versão fixa).
+Origem: registro oficial do npm. Para atualizar, troque o arquivo, rode os testes e atualize esta lista.
+
+qrcode.js    -> pacote npm "qrcode-generator" 1.4.4 (MIT, Kazuhiko Arase). Mesma versão que o site já usava pela CDN cdnjs.
+  sha256: 18ae399f81182bc9de916e9c77b195df20cc58d6f2d55a62b085a299f1bf1780
+supabase.js  -> pacote npm "@supabase/supabase-js" 2.118.0, arquivo dist/umd/supabase.js (MIT). Publicada em 15/10/2026.
+  sha256: ee3be8de192b97cb1d73d1e95d6b82bb1f6b658c0f97c4ef757fc331996ed3d3

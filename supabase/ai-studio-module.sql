@@ -1,3 +1,9 @@
+-- ##########################################################################################################
+-- ARQUIVO LEGADO (histórico). Use somente em INSTALAÇÃO NOVA, na ordem de CONFIGURACAO-SUPABASE.md.
+-- NÃO reexecute em um banco que já está em uso: os módulos antigos redefinem funções que as migrações
+-- de supabase/migrations/ substituíram, e podem falhar ou desfazer ajustes. Para atualizar um banco existente,
+-- rode apenas os arquivos de supabase/migrations/ (são idempotentes e registram o que foi aplicado).
+-- ##########################################################################################################
 -- ========== AMORIA AI STUDIO: configuração, uso, cotas e custo ==========
 -- Seguro para reexecutar. IA nasce DESLIGADA. Nada aqui é acessível pelo navegador (RLS sem policies + privilégios revogados).
 create table if not exists public.ai_settings (

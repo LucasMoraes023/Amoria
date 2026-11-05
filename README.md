@@ -1,76 +1,59 @@
-# AMORIA
-App de experiências românticas criado por Lucas Moraes. Frontend estático, autenticação e dados no Supabase, funções serverless no Netlify.
+# AMORIA — Transforme sentimentos em memórias
 
-## Comportamento
-- Criar, editar, visualizar e publicar experiências é gratuito para usuários autenticados.
-- Links públicos existentes continuam abrindo sem login; experiências secretas, com senha, agendadas ou de contas bloqueadas mantêm suas proteções.
-- Baixar o QR simples ou personalizado exige uma liberação avulsa por experiência. O preço inicial de cada opção é R$ 6,99; o administrador principal pode ajustar os produtos em Admin > Preços e acesso.
-- O código de cortesia `AMORIA1` pode liberar até três downloads por usuário, combinando QR simples e personalizado. O código é aplicado no checkout e não concede acesso automaticamente.
-- A foto decorativa fica fora dos módulos do QR. O gerador usa correção de erro alta e uma margem de segurança de pelo menos quatro módulos.
-- Dados antigos de pagamentos, assinaturas e planos não são apagados. As assinaturas não são usadas para conceder recursos e os pagamentos antigos permanecem identificados como histórico.
+Aplicativo para criar experiências românticas (declarações, cartas, fotos, vídeos e música) e compartilhá-las por link ou por **QR Code**.
+Criado por **Lucas Moraes**.
 
-## Atualizar uma instalação existente
-1. Faça backup do banco antes de aplicar migrações.
-2. No Supabase SQL Editor, execute `supabase/free-experiences-qr-addon.sql` se ainda não tiver sido aplicada.
-3. Execute `supabase/payments-pix-module.sql` e, em seguida, `supabase/catalog-access-module.sql`. Os módulos são incrementais e preservam experiências e histórico; o catálogo mantém a publicação gratuita, cria os produtos de download, configura `AMORIA1` e substitui a concessão manual de cortesias pelo resgate de códigos.
-4. Preserve a configuração de vídeos existente. Se ainda não foi habilitada, execute uma vez `supabase/video-support.sql`.
-5. Faça deploy do código atualizado no Netlify sem recriar o projeto Supabase.
-6. Confira Authentication > URL Configuration e mantenha o domínio publicado em Site URL e Redirect URLs.
-7. Em `config.js`, configure a URL do projeto e a chave `anon public` do Supabase. Essa chave é pública por projeto; nunca use a service-role key no frontend.
+## Modelo comercial (definitivo)
 
-Não execute `schema.sql` novamente em uma instalação existente. Para uma instalação nova, execute `supabase/schema.sql`, `supabase/free-experiences-qr-addon.sql`, `supabase/payments-pix-module.sql` e `supabase/catalog-access-module.sql`, nessa ordem. Execute `supabase/video-support.sql` quando o recurso de vídeo for necessário.
+| Ação | Custo |
+|---|---|
+| Criar, editar, salvar, publicar e compartilhar o link | **Grátis, sempre** |
+| Baixar o QR Code padrão (PNG, JPG ou PDF) | Pago (Pix) ou liberado por código |
+| Baixar o QR Code personalizado (arte com fotos, moldura, cores) | Pago (Pix) ou liberado por código |
+| Código de cortesia válido | Grátis, dentro dos limites do código |
 
-## Administrador principal
-As contas que já tinham `profiles.role = 'admin'` são preservadas na allowlist; nenhuma conta é escolhida por nome ou promovida automaticamente como administrador principal. As operações críticas ficam desabilitadas até configurar explicitamente a identidade autenticada do Lucas.
+- A prévia da arte do QR é grátis; o **arquivo** só é entregue com a liberação confirmada **pelo servidor**.
+- Os preços são definidos no painel (**Admin → Preços e acesso**), em um único lugar. O código-fonte não tem valores.
+- **Cortesia só existe por código.** Não há liberação manual por e-mail nem confirmação manual de pagamento.
+- O código **AMORIA1** já vem configurado: 3 liberações grátis por usuário (QR padrão ou personalizado).
+- 1 uso do código = 1 QR liberado (uma experiência e um tipo de QR). Depois de liberado, o mesmo QR pode ser baixado de novo quantas vezes quiser. O personalizado inclui o padrão.
 
-1. Crie/confirme a conta AMORIA que pertence ao administrador principal.
-2. No Supabase Authentication > Users, copie o UUID dessa conta e confirme a identidade por um canal confiável. Não use o nome de exibição como prova.
-3. No SQL Editor, substitua `UUID-VERIFICADO` abaixo pelo UUID conferido e execute:
+## Como funciona (resumo técnico)
 
-```sql
-begin;
-insert into public.admin_allowlist(user_id)
-values ('UUID-VERIFICADO')
-on conflict (user_id) do nothing;
+- **Site:** `index.html` + `app.js` (sem CDN; bibliotecas fixas em `vendor/`).
+- **Banco e login:** Supabase (Postgres com RLS, Auth, Storage). A lógica de preço, códigos, pedidos e liberações fica no banco.
+- **Servidor:** Netlify Functions em `netlify/functions` (pagamento Pix pelo Mercado Pago, webhook, IA, status do painel).
+- **Pagamento:** só Pix do Mercado Pago. Um pagamento só vale quando o Mercado Pago confirma ao servidor (webhook + consulta direta à API). Voltar para a página de sucesso não libera nada.
+- **Build:** `node scripts/build.js` monta `dist/` com **somente** os arquivos públicos. SQL, funções, testes e documentos nunca vão para o site.
 
-update public.profiles
-set role = 'admin'
-where id = 'UUID-VERIFICADO';
+## Pastas
 
-insert into public.admin_identity(slot, user_id)
-values (true, 'UUID-VERIFICADO')
-on conflict (slot) do update
-set user_id = excluded.user_id, configured_at = now();
-commit;
+```
+index.html, app.js, config.js   site
+sw.js, manifest.webmanifest      app instalável / offline
+vendor/                          bibliotecas com versão fixa
+scripts/build.js                 monta dist/
+netlify/functions, netlify/lib   servidor (Functions)
+supabase/                        SQL legado (instalação nova)
+supabase/migrations/             migrações novas (rode estas em banco existente)
+tests/                           testes automatizados
+backup-original/                 arquivos originais substituídos (para reverter)
 ```
 
-O UUID é uma autorização manual explícita e a identidade autenticada continua sendo conferida no banco para cada ação administrativa. Usuários comuns não podem alterar `role`, `plan` ou a licença QR. A troca de administrador principal deve ser feita no SQL Editor, nunca no navegador. As demais contas admin preexistentes são mantidas, mas operações críticas e leitura administrativa de dados pessoais ficam limitadas à identidade principal.
+## Documentação
 
-## Pagamentos e downloads de QR — Pix direto
+- `INSTRUCOES-DE-IMPLANTACAO.md` — passo a passo pelo celular (comece por aqui)
+- `CONFIGURACAO-SUPABASE.md` e `CONFIGURACAO-NETLIFY.md`
+- `VARIAVEIS-DE-AMBIENTE.md` (modelo em `variaveis-exemplo.txt`, sem segredos)
+- `RELATORIO-DE-AUDITORIA.md`, `CORRECOES-REALIZADAS.md`
+- `PENDENCIAS-REAIS.md` — o que depende de você ou de serviços externos
 
-O checkout desta branch aceita somente Pix por chave própria. O servidor calcula o preço a partir do catálogo do banco, cria o pedido e monta o BR Code com valor e identificador do pedido. O navegador não escolhe nem altera o valor.
+## Testes
 
-A confirmação é manual: o pedido fica pendente até o administrador principal conferir o crédito efetivo no aplicativo/extrato bancário e aprovar no painel. A imagem ou PDF de comprovante enviado pelo comprador, por si só, nunca comprova que o dinheiro entrou. Não existe conciliação bancária automática.
+```
+cd tests
+npm install
+npm test
+```
 
-No Netlify, configure somente:
-- `SUPABASE_URL`: URL do projeto Supabase usado no frontend.
-- `SUPABASE_SERVICE_ROLE_KEY`: chave service-role do mesmo projeto, exclusivamente no ambiente server-side.
-
-No painel ADM > Pagamentos e Pix, informe tipo e chave Pix, titular, cidade e instruções. Ajuste os preços em Admin > Preços e acesso. O QR padrão e o personalizado são produtos avulsos; criar/publicar a experiência e compartilhar o link continuam gratuitos.
-
-A migração `supabase/pix-direct-only-migration.sql` força `mp_enabled=false` e `own_enabled=true` na configuração. Ela deve ser revisada e aplicada somente depois das migrações base `payments-pix-module.sql` e `catalog-access-module.sql`. Não execute no banco de produção sem backup e autorização.
-
-`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e o endpoint `mp-webhook` não fazem parte do novo fluxo de pagamento. Remova as variáveis antigas do Netlify apenas depois de confirmar que nenhum outro componente do projeto as utiliza.
-
-## Execução e validação local
-O site é estático; para testar rotas e service worker, sirva a raiz do repositório por HTTP. Login, publicação na nuvem e checkout exigem Supabase e as configurações Netlify acima. O fluxo de pagamento deve ser testado com credenciais e usuário comprador de teste do Mercado Pago; não use pagamentos reais como teste.
-
-Não há manifesto de dependências neste repositório. `node --check` pode verificar as funções Netlify; os testes abaixo verificam o JavaScript do editor e simulam as chamadas server-side. A configuração e o resultado de chamadas reais dependem das credenciais externas.
-
-Os testes de regressão sem dependências externas podem ser executados com `node --test tests/*.test.js`. As chamadas do Supabase e do Mercado Pago nesses testes são simuladas; validar uma cobrança real/sandbox ainda exige as credenciais e contas de teste configuradas acima. Não use pagamentos reais para testar.
-
-## Recursos preservados
-- Autenticação por e-mail/senha, recuperação de senha, sessões Supabase e rotas públicas existentes.
-- Experiências, histórico de visitas, fotos, vídeos, músicas, temas, estatísticas e contas existentes.
-- Ferramenta de música e controles de usuários/experiências no painel administrativo.
-- O painel não simula indicadores: métricas e pagamentos são lidos do banco. Logs operacionais de Functions permanecem no painel Netlify; tentativas de autenticação ficam nos logs do Supabase.
+Precisa de Node 20+. Os testes de SQL precisam de um PostgreSQL 15+ (variável `AMORIA_PG`, por exemplo `postgres://postgres@localhost:5432/postgres`); sem ele ficam **bloqueados** (nunca aprovados). Resultado desta versão: 130 aprovados, 0 reprovados.
