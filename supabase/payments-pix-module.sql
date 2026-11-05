@@ -182,12 +182,24 @@ begin
   if pay.status not in ('pending','in_process') then raise exception 'Este pedido não está aguardando confirmação'; end if;
   update public.payments set status='approved',paid_at=now(),confirmed_by=auth.uid(),
     status_detail='Confirmação manual do administrador',updated_at=now() where id=p_id;
-  update public.experiences set qr_custom_paid=true where id=pay.experience_id;
+  perform public.deliver_order(p_id);
   insert into public.payment_events(payment_id,event_key,from_status,to_status,source,detail)
     values(p_id,'manual-confirm:'||p_id,pay.status,'approved','admin','Confirmação manual autorizada pelo admin principal');
   insert into public.admin_audit(actor,action,record_type,record_id)
     values(auth.uid(),'CONFIRM_MANUAL','payments',p_id::text);
 end $$;
+
+create or replace function public.admin_release_order(p_id uuid)
+returns void language plpgsql security definer set search_path=public as $
+declare pay public.payments%rowtype;
+begin
+  if not public.is_primary_admin() then raise exception 'forbidden'; end if;
+  select * into pay from public.payments where id=p_id for update;
+  if not found then raise exception 'Pedido não encontrado'; end if;
+  if pay.status<>'approved' then raise exception 'Somente pedidos confirmados podem ser liberados'; end if;
+  if pay.delivered_at is not null then return; end if;
+  perform public.deliver_order(p_id);
+end $;
 
 create or replace function public.admin_cancel_manual_payment(p_id uuid)
 returns void language plpgsql security definer set search_path=public as $$
@@ -232,7 +244,7 @@ declare fn text;
 begin
   foreach fn in array array[
     'admin_payment_settings_get()','admin_payment_settings_save(jsonb)',
-    'admin_orders(text,text,date,date)','admin_payment_events(integer)',
+    'admin_orders(text,text,date,date)','admin_payment_events(integer)','admin_release_order(uuid)',
     'admin_confirm_manual_payment(uuid)','admin_cancel_manual_payment(uuid)',
     'admin_payment_report(date,date)','admin_save_settings(jsonb,jsonb)'] loop
     execute format('revoke all on function public.%s from public,anon',fn);
