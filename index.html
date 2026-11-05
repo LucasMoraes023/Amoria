@@ -168,6 +168,39 @@ header .lnk{margin:0;font-size:.85rem}
 .pol.mosaic{display:block;columns:2;column-gap:.5rem}.pol.mosaic button{display:block;width:100%;padding:0;background:none;box-shadow:none;transform:none;margin-bottom:.5rem;border-radius:16px;overflow:hidden;break-inside:avoid}
 .foot{line-height:1.7}
 .qr-tools{margin:.8rem 0;padding:1rem;border:1px solid var(--ln);border-radius:12px;background:var(--card)}.qr-preview{width:min(100%,320px);margin:.8rem auto;padding:10px;background:#fff;border:1px solid var(--ln);border-radius:8px}.qr-preview img{display:block;width:100%;image-rendering:pixelated}.qr-destination{overflow-wrap:anywhere}.qr-template{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}.qr-template button{min-height:56px}.admin-tabs{display:flex;gap:.45rem;overflow-x:auto;padding:.35rem 0}.admin-tabs button{flex:none}.admin-table{width:100%;border-collapse:collapse;font-size:.85rem}.admin-table th,.admin-table td{text-align:left;padding:.55rem;border-bottom:1px solid var(--ln);overflow-wrap:anywhere}.audit-table td:nth-child(1){white-space:nowrap}.audit-table td:nth-child(5){white-space:nowrap}.audit-table td:nth-child(4){font-family:ui-monospace,SFMono-Regular,monospace;font-size:.78rem}.audit-table td:nth-child(6){min-width:220px}.audit-table .audit-detail{display:block;line-height:1.45}@media(max-width:560px){.admin-tabs{margin:0 -0.9rem;padding:.35rem .9rem}.admin-table.audit-table{display:block;border:0}.admin-table.audit-table thead{display:none}.admin-table.audit-table tbody{display:grid;gap:.8rem}.admin-table.audit-table tr{display:grid;grid-template-columns:1fr 1fr;gap:.45rem .8rem;padding:.9rem;border:1px solid var(--ln);border-radius:16px;background:var(--card)}.admin-table.audit-table td{display:block;padding:.15rem 0;border:0;min-width:0;font-size:.82rem}.admin-table.audit-table td::before{display:block;font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin-bottom:.15rem}.admin-table.audit-table td:nth-child(1)::before{content:'Data'}.admin-table.audit-table td:nth-child(2)::before{content:'Ação'}.admin-table.audit-table td:nth-child(3)::before{content:'Área'}.admin-table.audit-table td:nth-child(4)::before{content:'Registro'}.admin-table.audit-table td:nth-child(5)::before{content:'Operador'}.admin-table.audit-table td:nth-child(6)::before{content:'Detalhe'}.admin-table.audit-table td:nth-child(6){grid-column:1/-1}.admin-table.audit-table td:nth-child(4),.admin-table.audit-table td:nth-child(5){white-space:normal;overflow-wrap:anywhere}.admin-table.audit-table .audit-detail{font-size:.82rem}.admin-table.audit-table td:nth-child(1){white-space:normal}.admin-table.audit-table td:nth-child(1) br{display:none}}
+
+/* ===== RESPONSIVE ADMIN POLISH ===== */
+.admin-tabs{align-items:center;scrollbar-width:none;border-bottom:1px solid var(--ln);margin-bottom:1rem}
+.admin-tabs::-webkit-scrollbar{display:none}
+.admin-tabs .sm{flex:none}
+.admin-table-wrap{width:100%;overflow-x:auto;border-radius:16px}
+.admin-table{min-width:680px}
+.admin-table tbody tr:hover{background:rgba(163,18,63,.035)}
+.admin-table td,.admin-table th{vertical-align:top}
+#ab{min-width:0}
+#ab>h3{margin-top:.4rem;font-size:1.35rem}
+#ab>p.mu{max-width:70ch;line-height:1.65}
+#ab .grid{margin-top:1rem}
+#ab .grid .card{min-width:0}
+@media(max-width:700px){
+  .wrap{max-width:100%;padding-left:1rem;padding-right:1rem}
+  h2{font-size:1.55rem}
+  .admin-tabs{margin-left:-1rem;margin-right:-1rem;padding:.45rem 1rem;position:sticky;top:0;background:linear-gradient(var(--bg) 78%,transparent);z-index:2}
+  .admin-tabs .sm{font-size:.76rem;padding:.4rem .72rem}
+  .admin-table{min-width:680px}
+  .admin-table.audit-table{min-width:0}
+  #ab>h3{font-size:1.25rem}
+  #ab .grid{grid-template-columns:1fr 1fr}
+  #ab .grid .card{padding:1rem}
+}
+@media(max-width:480px){
+  .wrap{padding-left:.9rem;padding-right:.9rem}
+  .admin-tabs{margin-left:-.9rem;margin-right:-.9rem;padding-left:.9rem;padding-right:.9rem}
+  #ab .grid{grid-template-columns:1fr}
+  .admin-table.audit-table tr{grid-template-columns:1fr 1fr}
+  .admin-table.audit-table td:nth-child(6){grid-column:1/-1}
+  .row .btn{width:100%}
+}
 </style>
 </head>
 <body>
