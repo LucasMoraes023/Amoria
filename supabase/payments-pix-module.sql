@@ -1,3 +1,9 @@
+-- ##########################################################################################################
+-- ARQUIVO LEGADO (histórico). Use somente em INSTALAÇÃO NOVA, na ordem de CONFIGURACAO-SUPABASE.md.
+-- NÃO reexecute em um banco que já está em uso: os módulos antigos redefinem funções que as migrações
+-- de supabase/migrations/ substituíram, e podem falhar ou desfazer ajustes. Para atualizar um banco existente,
+-- rode apenas os arquivos de supabase/migrations/ (são idempotentes e registram o que foi aplicado).
+-- ##########################################################################################################
 -- AMORIA: módulo de Pagamentos e Pix (Mercado Pago + chave Pix própria)
 -- Seguro para reexecutar. Não apaga dados.
 
@@ -33,9 +39,10 @@ alter table public.payments
 create index if not exists payments_status_created_idx on public.payments(status, created_at desc);
 
 -- 3) Preço público: somente o valor. Dados de recebimento saem do settings público.
+-- (legado) esta etapa zerava o preço do QR para 6,99 a cada execução; agora só preenche se ainda não houver valor.
 update public.settings
 set value = jsonb_build_object('price_cents',0,'qr_custom_cents',699)
-where key = 'billing';
+where key = 'billing' and not (value ? 'qr_custom_cents');
 
 create or replace function public.admin_save_settings(p_themes jsonb,p_billing jsonb)
 returns void language plpgsql security definer set search_path=public as $$

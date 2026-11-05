@@ -1,0 +1,17 @@
+{
+  "name": "amoria-tests",
+  "private": true,
+  "description": "Ferramentas de teste do AMORIA (não fazem parte do site publicado). Instale com: cd tests && npm install. Rode com: npm test",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "1.1.0",
+    "jsdom": "26.1.0",
+    "jsqr": "1.4.0",
+    "pg": "8.23.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

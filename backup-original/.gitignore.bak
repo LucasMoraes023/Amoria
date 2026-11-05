@@ -1,0 +1,12 @@
+# Segredos e credenciais: nunca versionar
+.env
+.env.*
+*.pem
+*.key
+*.p12
+# Pacotes e backups (o site publica a raiz do repositório)
+*.zip
+# Dependências e artefatos locais
+node_modules/
+.netlify/
+.DS_Store

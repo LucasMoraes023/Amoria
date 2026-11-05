@@ -1,3 +1,9 @@
+-- ##########################################################################################################
+-- ARQUIVO LEGADO (histórico). Use somente em INSTALAÇÃO NOVA, na ordem de CONFIGURACAO-SUPABASE.md.
+-- NÃO reexecute em um banco que já está em uso: os módulos antigos redefinem funções que as migrações
+-- de supabase/migrations/ substituíram, e podem falhar ou desfazer ajustes. Para atualizar um banco existente,
+-- rode apenas os arquivos de supabase/migrations/ (são idempotentes e registram o que foi aplicado).
+-- ##########################################################################################################
 -- Incremental migration: free experiences and an optional one-time QR addon.
 -- Existing experiences, payments, subscriptions, and plans are preserved.
 

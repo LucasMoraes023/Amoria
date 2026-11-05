@@ -1,0 +1,13 @@
+# MODELO de variáveis de ambiente do Netlify (Site configuration > Environment variables).
+# Isto é só um exemplo com marcadores. NUNCA coloque valores reais em arquivos do repositório.
+
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=COLE_AQUI_A_CHAVE_service_role_DO_SUPABASE
+MP_ACCESS_TOKEN=COLE_AQUI_O_ACCESS_TOKEN_DO_MERCADO_PAGO
+MP_WEBHOOK_SECRET=COLE_AQUI_A_ASSINATURA_SECRETA_DO_WEBHOOK
+# Opcionais (IA). Sem elas, a IA fica indisponível e a tela avisa.
+ANTHROPIC_API_KEY=COLE_AQUI_A_CHAVE_DA_ANTHROPIC
+OPENAI_API_KEY=COLE_AQUI_A_CHAVE_DA_OPENAI
+# Opcional: tempo máximo da IA de texto em milissegundos (3000 a 24000; padrão 8500)
+AI_TEXT_TIMEOUT_MS=8500
+# URL e DEPLOY_PRIME_URL são definidas pelo próprio Netlify. Não crie.

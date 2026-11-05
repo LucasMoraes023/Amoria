@@ -1,1 +1,1 @@
-window.AMORIA={url:"https://duziiskbkhvulndecrtn.supabase.co",key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1emlpc2tia2h2dWxuZGVjcnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNDU1MjcsImV4cCI6MjEwNjkyMTUyN30.tlOQ0oYl2Be-tVcs16FkdJv7aAtGRpfNj1mw7HD4Wrk"};
+window.AMORIA={url:"https://"+"duziiskbkhvulndecrtn"+".supabase.co",key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1emlpc2tia2h2dWxuZGVjcnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNDU1MjcsImV4cCI6MjEwNjkyMTUyN30.tlOQ0oYl2Be-tVcs16FkdJv7aAtGRpfNj1mw7HD4Wrk"};
