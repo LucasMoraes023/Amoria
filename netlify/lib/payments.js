@@ -8,6 +8,7 @@ const env = () => ({
   SITE: (process.env.URL || process.env.DEPLOY_PRIME_URL || '').replace(/\/$/, '')
 });
 const H = { 'Content-Type': 'application/json' };
+const DEFAULT_CFG = { mp_enabled:false, own_enabled:false, key_type:'', key:'', holder:'', display_name:'', bank:'', city:'', instructions:'', whatsapp:'' };
 const R = (c, o) => ({ statusCode: c, headers: H, body: JSON.stringify(o) });
 const sb = (p, o = {}) => {
   const e = env();
