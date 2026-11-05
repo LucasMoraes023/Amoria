@@ -274,6 +274,9 @@ begin
 end $$;
 drop trigger if exists gate_publish on public.experiences;
 
+-- Bloqueia imediatamente experiências antigas que ainda tenham payload público sem pagamento.
+update public.experiences set pub=null where coalesce(paid,false)=false;
+
 -- ========== 8) Funções para o usuário ==========
 create or replace function public.get_catalog() returns jsonb
 language sql stable security definer set search_path=public as $$
