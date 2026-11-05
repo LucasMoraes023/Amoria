@@ -86,7 +86,7 @@ test('standard and custom QR prices are independent products in the catalog', ()
   const sql = fs.readFileSync(path.join(__dirname, '../supabase/catalog-access-module.sql'), 'utf8');
   assert.match(sql, /values \('qr_standard','Download do QR Code'/);
   assert.match(sql, /values \('qr_custom','QR Code personalizado'/);
-  assert.match(sql, /values\('AMORIA1','free',0,array\['qr_standard','qr_custom'\]/);
+  assert.match(sql, /values\('AMORIA1','free',0,array\['qr_standard','qr_custom','publish_experience'\]/);
   assert.match(sql, /max_uses=null,per_user_limit=3,starts_at=null,ends_at=null/);
   assert.match(sql, /O preço dos downloads de QR deve ser de pelo menos R\$ 1,00/);
 });
