@@ -34,7 +34,7 @@ async function isPrimaryAdmin(userId) {
   return r.ok && (await rows(r)).length === 1;
 }
 
-const DEFAULT_CFG = { mp_enabled: false, own_enabled: true, key_type: '', key: '', holder: '', bank: '', city: '', display_name: '', instructions: '' };
+// Configuração padrão do Pix direto. Deve existir apenas uma declaração.\nconst DEFAULT_CFG = {\n  mp_enabled: false,\n  own_enabled: true,\n  key_type: '',\n  key: '',\n  holder: '',\n  display_name: '',\n  bank: '',\n  city: '',\n  instructions: '',\n  whatsapp: ''\n};
 async function readConfig() {
   const r = await sb('payment_settings?slot=eq.true&select=data');
   const [row] = await rows(r);
