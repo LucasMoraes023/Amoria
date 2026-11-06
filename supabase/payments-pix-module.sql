@@ -1,4 +1,4 @@
--- AMORIA: módulo de Pagamentos e Pix (Mercado Pago + chave Pix própria)
+-- AMORIA: módulo de Pagamentos e Pix direto por chave própria
 -- Seguro para reexecutar. Não apaga dados.
 
 -- 1) Configuração privada de recebimento (nunca exposta ao navegador público)
