@@ -281,8 +281,7 @@ begin
 end $$;
 drop trigger if exists gate_publish on public.experiences;
 
--- Bloqueia imediatamente experiências antigas que ainda tenham payload público sem pagamento.
-update public.experiences set pub=null where coalesce(paid,false)=false;
+-- O acesso público de experiências não pagas é bloqueado por get_experience(); não apagar o payload salvo, pois ele será liberado quando paid=true.
 
 -- ========== 8) Funções para o usuário ==========
 create or replace function public.get_catalog() returns jsonb
