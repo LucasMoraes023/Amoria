@@ -33,7 +33,7 @@ exports.handler = async ev => {
     let exp = null;
     if (def.needsExp) {
       if (!/^[0-9a-f-]{36}$/i.test(expId || '')) return R(400, { error: 'Experiência inválida' });
-      [exp] = await rows(await sb(`experiences?id=eq.${expId}&owner=eq.${u.id}&select=id,qr_custom_paid,content`));
+      [exp] = await rows(await sb(`experiences?id=eq.${expId}&owner=eq.${u.id}&select=id,paid,qr_custom_paid,content`));
       if (!exp) return R(404, { error: 'Experiência não encontrada' });
     }
     const scope = `user_id=eq.${u.id}&product_code=eq.${product}&` + (def.needsExp ? `experience_id=eq.${expId}` : 'experience_id=is.null');
