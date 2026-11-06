@@ -4,7 +4,7 @@
 
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', true)
-on conflict (id) do update set public = true;
+on conflict (id) do update set public = true, file_size_limit = 15728640, allowed_mime_types = array['image/jpeg','image/png','image/webp'];
 
 drop policy if exists "AMORIA photos public read" on storage.objects;
 create policy "AMORIA photos public read"
