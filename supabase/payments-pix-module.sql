@@ -190,7 +190,7 @@ begin
 end $$;
 
 create or replace function public.admin_release_order(p_id uuid)
-returns void language plpgsql security definer set search_path=public as $
+returns void language plpgsql security definer set search_path=public as $release$
 declare pay public.payments%rowtype;
 begin
   if not public.is_primary_admin() then raise exception 'forbidden'; end if;
@@ -199,7 +199,7 @@ begin
   if pay.status<>'approved' then raise exception 'Somente pedidos confirmados podem ser liberados'; end if;
   if pay.delivered_at is not null then return; end if;
   perform public.deliver_order(p_id);
-end $;
+end $release$;
 
 create or replace function public.admin_cancel_manual_payment(p_id uuid)
 returns void language plpgsql security definer set search_path=public as $$
