@@ -262,12 +262,12 @@ begin
 end $$;
 create or replace function public.admin_experiences()
 returns table(id uuid,slug text,title text,type text,owner_email text,views int,created_at timestamptz,paid boolean,qr_custom_paid boolean)
-language plpgsql security definer set search_path=public as $
+language plpgsql security definer set search_path=public as $exp$
 begin
   if not public.is_primary_admin() then raise exception 'forbidden'; end if;
   return query select e.id,e.slug,e.title,e.type,u.email::text,e.views,e.created_at,e.paid,e.qr_custom_paid
     from public.experiences e join auth.users u on u.id=e.owner order by e.created_at desc limit 200;
-end $$;
+end $exp$;
 create or replace function public.admin_set_user(uid uuid,p_blocked boolean default null,p_plan text default null)
 returns void language plpgsql security definer set search_path=public as $$
 begin
