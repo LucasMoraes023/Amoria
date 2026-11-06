@@ -13,8 +13,9 @@ exports.handler = async ev => {
       const cfg = await L.readConfig();
       const ready = !!(e.SU && e.SK && L.ownReady(cfg));
       if (ready) await L.ensurePublishProduct();
-      const q = ready ? await L.quote(null, 'publish_experience', null, false) : null;
-      return R(200, { enabled: !!(q && q.ok), methods: { pix_manual: ready }, price_cents: q && q.ok ? q.final_cents : null });
+      let q = null;
+      if (ready) { try { q = await L.quote(null, 'publish_experience', null, false); } catch {} }
+      return R(200, { enabled: ready, methods: { pix_manual: ready }, price_cents: q && q.ok ? q.final_cents : null });
     } catch (err) {
       console.error('[create-payment] config:', err.message || 'unknown');
       return R(503, { enabled: false, methods: { pix_manual: false }, error: 'Não foi possível consultar a configuração Pix.' });
