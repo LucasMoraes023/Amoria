@@ -3,7 +3,7 @@ const { buildPixPayload } = require('../lib/pix');
 const L = require('../lib/payments');
 const { R, sb, rows } = L;
 const ACTIVE = 'status=in.(pending,in_process)';
-const PRODUCTS = { qr_standard: { needsExp: true }, qr_custom: { needsExp: true }, publish_experience: { needsExp: true } };
+const PRODUCTS = { qr_standard: { needsExp: true }, qr_custom: { needsExp: true }, publish_experience: { needsExp: true }, publish_qr_custom: { needsExp: true } };
 
 exports.handler = async ev => {
   const e = L.env();
@@ -39,8 +39,8 @@ exports.handler = async ev => {
     }
     const scope = `user_id=eq.${u.id}&product_code=eq.${product}&` + (def.needsExp ? `experience_id=eq.${expId}` : 'experience_id=is.null');
     const entitled = async () => {
-      if (product === 'qr_custom' && exp.qr_custom_paid) return true;
-      if (product === 'publish_experience' && exp.paid) return true;
+      if ((product === 'qr_custom' || product === 'publish_qr_custom') && exp.qr_custom_paid) return true;
+      if ((product === 'publish_experience' || product === 'publish_qr_custom') && exp.paid) return true;
       const ents = await rows(await sb(`entitlements?user_id=eq.${u.id}&product_code=eq.${product}&experience_id=eq.${expId}&revoked_at=is.null&select=quantity,consumed,expires_at`));
       return ents.some(x => x.consumed < x.quantity && (!x.expires_at || new Date(x.expires_at) > new Date()));
     };
@@ -49,7 +49,7 @@ exports.handler = async ev => {
       return R(200, { paid: await entitled(), status: last ? last.status : null, provider: last ? last.provider : null });
     }
     if (await entitled()) return R(200, { paid: true });
-    if (product === 'qr_custom' && (!exp.content || exp.content.qrCustom !== true)) return R(403, { error: 'Selecione o QR personalizado antes de comprar' });
+    if ((product === 'qr_custom' || product === 'publish_qr_custom') && (!exp.content || exp.content.qrCustom !== true)) return R(403, { error: 'Selecione o QR personalizado antes de comprar' });
     const cfg = await L.readConfig();
     if (!L.ownReady(cfg)) return R(503, { error: 'Pix direto ainda não foi configurado no painel ADM' });
     const findPending = async () => (await rows(await sb(`payments?${scope}&${ACTIVE}&select=id,provider,amount_cents,status,coupon_code`)))[0];
