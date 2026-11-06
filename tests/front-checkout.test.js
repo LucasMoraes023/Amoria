@@ -58,3 +58,17 @@ test('o front não contém segredos: nenhum token do Mercado Pago nem chave JWT 
 test('o fluxo de autenticação tolera falha na verificação de admin sem quebrar o carregamento', () => {
   assert.match(html, /SB\.rpc\('is_primary_admin'\)\.catch\(\(\)=>\(\{data:false\}\)\)/);
 });
+
+test('salvamento cloud exige conteúdo público e preserva o pub existente como fallback', () => {
+  assert.match(html, /select\('content,pub,paid,paid_at,qr_custom_paid'\)/);
+  assert.match(html, /generatedPub=.*\?\.split\('~'\)\[0\]\|\|''/);
+  assert.match(html, /body=generatedPub\|\|existing\?\.pub\|\|''/);
+  assert.match(html, /data-pay-id=/);
+});
+test('painel ADM usa publicação paga separada do QR personalizado', () => {
+  assert.match(html, /x\.pub_paid\?\?x\.paid/);
+  assert.match(html, /x\.qr_custom_paid/);
+});
+test('histórico de pagamentos aceita product_code e registros legados com purpose', () => {
+  assert.match(html, /p\.product_code\|\|p\.purpose/);
+});
