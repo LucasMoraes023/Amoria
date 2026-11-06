@@ -163,6 +163,9 @@ begin
   if e.at is not null and e.at>now() then
     return jsonb_build_object('at',floor(extract(epoch from e.at)*1000));
   end if;
+  if not e.paid then
+    return jsonb_build_object('unpaid',true);
+  end if;
   public_content:=e.pub;
   if not e.qr_custom_paid and e.pub like 'P.%' then
     payload:=convert_from(decode(
