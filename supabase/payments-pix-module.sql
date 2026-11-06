@@ -149,7 +149,7 @@ begin
   return query
     select p.id,p.experience_id,u.email::text,e.title,
       case p.product_code when 'qr_custom' then 'QR personalizado' when 'qr_standard' then 'QR simples' when 'publish_experience' then 'Publicação da experiência' else coalesce(p.product_code,p.purpose,'—') end,
-      p.amount_cents,p.provider,p.provider_ref,p.status,p.status_detail,p.created_at,p.paid_at,coalesce(e.qr_custom_paid,false)
+      p.amount_cents,p.provider,p.provider_ref,p.status,p.status_detail,p.created_at,p.paid_at,(p.delivered_at is not null)
     from public.payments p
     left join auth.users u on u.id=p.user_id
     left join public.experiences e on e.id=p.experience_id
@@ -219,22 +219,44 @@ end $$;
 
 create or replace function public.admin_payment_report(p_from date default null,p_to date default null)
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare f timestamptz:=coalesce(p_from,(now()-interval '30 days')::date)::timestamptz;
-        t timestamptz:=(coalesce(p_to,now()::date)+1)::timestamptz; r jsonb;
+declare
+  f timestamptz:=coalesce(p_from,(now()-interval '30 days')::date)::timestamptz;
+  t timestamptz:=(coalesce(p_to,now()::date)+1)::timestamptz;
+  r jsonb;
 begin
   if not public.is_primary_admin() then raise exception 'forbidden'; end if;
+
   select jsonb_build_object(
-    'orders',(select count(*) from public.payments where product_code='qr_custom' and created_at>=f and created_at<t),
-    'confirmed',(select count(*) from public.payments where product_code='qr_custom' and status='approved' and paid_at>=f and paid_at<t),
-    'pending',(select count(*) from public.payments where product_code='qr_custom' and status in ('pending','in_process') and created_at>=f and created_at<t),
-    'rejected',(select count(*) from public.payments where product_code='qr_custom' and status in ('rejected','cancelled','expired') and created_at>=f and created_at<t),
-    'refunded',(select count(*) from public.payments where product_code='qr_custom' and status in ('refunded','charged_back') and created_at>=f and created_at<t),
-    'revenue_cents',(select coalesce(sum(amount_cents),0) from public.payments where purpose='qr_custom' and status='approved' and paid_at>=f and paid_at<t),
-    'refunded_cents',(select coalesce(sum(amount_cents),0) from public.payments where purpose='qr_custom' and status in ('refunded','charged_back') and created_at>=f and created_at<t),
-    'daily',coalesce((select jsonb_agg(jsonb_build_object('day',d.day,'sold',d.sold,'revenue_cents',d.rev) order by d.day)
-        from (select (paid_at at time zone 'America/Sao_Paulo')::date as day, count(*) as sold, sum(amount_cents) as rev
-              from public.payments where product_code='qr_custom' and status='approved' and paid_at>=f and paid_at<t group by 1) d),'[]'::jsonb)
+    'orders',(select count(*) from public.payments where product_code is not null and created_at>=f and created_at<t),
+    'confirmed',(select count(*) from public.payments where product_code is not null and status='approved' and paid_at>=f and paid_at<t),
+    'pending',(select count(*) from public.payments where product_code is not null and status in ('pending','in_process') and created_at>=f and created_at<t),
+    'rejected',(select count(*) from public.payments where product_code is not null and status in ('rejected','cancelled','expired') and created_at>=f and created_at<t),
+    'refunded',(select count(*) from public.payments where product_code is not null and status in ('refunded','charged_back') and created_at>=f and created_at<t),
+    'revenue_cents',(select coalesce(sum(amount_cents),0) from public.payments where product_code is not null and status='approved' and paid_at>=f and paid_at<t),
+    'refunded_cents',(select coalesce(sum(amount_cents),0) from public.payments where product_code is not null and status in ('refunded','charged_back') and created_at>=f and created_at<t),
+    'free_orders',(select count(*) from public.payments where product_code is not null and provider='free' and status='approved' and created_at>=f and created_at<t),
+    'discounts_cents',(select coalesce(sum(discount_cents),0) from public.payments where product_code is not null and created_at>=f and created_at<t),
+    'daily',coalesce(
+      (select jsonb_agg(
+        jsonb_build_object('day',d.day,'sold',d.sold,'revenue_cents',d.rev)
+        order by d.day
+      )
+      from (
+        select
+          (paid_at at time zone 'America/Sao_Paulo')::date as day,
+          count(*) as sold,
+          coalesce(sum(amount_cents),0) as rev
+        from public.payments
+        where product_code is not null
+          and status='approved'
+          and paid_at>=f
+          and paid_at<t
+        group by 1
+      ) d),
+      '[]'::jsonb
+    )
   ) into r;
+
   return r;
 end $$;
 
