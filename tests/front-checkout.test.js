@@ -21,19 +21,19 @@ const ctx = { PAY_METHODS: {}, qrcode: () => ({ addData() {}, make() {}, createD
 vm.createContext(ctx);
 vm.runInContext(code + '\nthis.payButtons=payButtons;this.payPanel=payPanel;this.csvCell=csvCell;this.ST_PT=ST_PT;', ctx);
 
-test('botões de pagamento seguem os métodos disponíveis', () => {
-  ctx.PAY_METHODS = { mercadopago: true, own_key: true };
-  const both = ctx.payButtons();
-  assert.match(both, /qr-buy:mercadopago/); assert.match(both, /qr-buy:own_key/);
-  ctx.PAY_METHODS = { mercadopago: true };
-  assert.ok(!/own_key/.test(ctx.payButtons()));
+test('botões de pagamento seguem o único método Pix direto', () => {
+  ctx.PAY_METHODS = { pix_manual: true };
+  const pix = ctx.payButtons();
+  assert.match(pix, /qr-buy:pix_manual/);
+  assert.match(pix, /Pagar com Pix/);
   ctx.PAY_METHODS = {};
   assert.match(ctx.payButtons(), /Nenhuma forma de pagamento/);
 });
-test('painel Mercado Pago mostra QR da cobrança, copia e cola, valor, pedido e estado', () => {
-  const h = ctx.payPanel({ method: 'mercadopago', orderId: 'abcdef12-0000', amount: 699, code: '00020126ABC', qr: 'QkFTRTY0' });
-  assert.match(h, /R\$\s?6,99/); assert.match(h, /data:image\/png;base64,QkFTRTY0/); assert.match(h, /00020126ABC/);
-  assert.match(h, /qr-copy/); assert.match(h, /qr-check/); assert.match(h, /abcdef12/); assert.match(h, /Aguardando pagamento/);
+test('painel Pix direto mostra QR, copia e cola, valor, pedido e confirmação manual', () => {
+  const h = ctx.payPanel({ method: 'pix_manual', orderId: 'abcdef12-0000', amount: 699, code: '00020126ABC', recipient: '5511999999999', instructions: 'Pague agora' });
+  assert.match(h, /R\$\s?6,99/); assert.match(h, /data:image\/gif/); assert.match(h, /00020126ABC/);
+  assert.match(h, /qr-copy/); assert.match(h, /qr-check/); assert.match(h, /abcdef12/); assert.match(h, /conferido pelo administrador/);
+  assert.match(h, /wa\.me\/5511999999999/);
 });
 test('painel de chave própria avisa que a conferência é manual e gera o QR localmente', () => {
   const h = ctx.payPanel({ method: 'pix_manual', orderId: 'x', amount: 699, code: '000201', recipient: 'LOJA <b>', instructions: 'Pague agora' });
