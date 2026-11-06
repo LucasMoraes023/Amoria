@@ -55,4 +55,6 @@ test('o front não contém segredos: nenhum token do Mercado Pago nem chave JWT 
     assert.notEqual(role, 'service_role');
   }
 });
-test('o fluxo de autenticação tolera falha na verificação de admin sem quebrar o carregamento', () => {\n  assert.match(html, /SB\\.rpc\\('is_primary_admin'\\)\\.catch\\(\\(\\)=>\\(\\{data:false\\}\\)\\)/);\n});
+test('o fluxo de autenticação tolera falha na verificação de admin sem quebrar o carregamento', () => {
+  assert.match(html, /SB\.rpc\('is_primary_admin'\)\.catch\(\(\)=>\(\{data:false\}\)\)/);
+});
