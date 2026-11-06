@@ -17,6 +17,7 @@ create table if not exists public.payments (
   paid_at timestamptz
 );
 alter table public.payments enable row level security;
+alter table public.payments alter column provider set default 'pix_manual';
 
 alter table public.experiences
   add column if not exists qr_custom_paid boolean not null default false;
