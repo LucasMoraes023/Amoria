@@ -16,7 +16,7 @@ begin
   if p_code='publish_qr_custom' then
     select * into p from public.products where code=p_code and deleted_at is null;
     if not found or not p.active or not p.wired then return jsonb_build_object('ok',false,'error','Produto indisponível no momento'); end if;
-    select coalesce(sum(price_cents),0)::int into base from public.products where code in ('publish_experience','qr_custom') and deleted_at is null and active;
+    select coalesce(sum(price_cents),0)::int into base from public.products where code in ('publish_experience','qr_custom') and deleted_at is null;
     if base<100 then return jsonb_build_object('ok',false,'error','Os preços de publicação e QR personalizado não estão configurados'); end if;
   else
     select * into p from public.products where code=p_code and deleted_at is null;
