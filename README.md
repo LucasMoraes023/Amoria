@@ -2,7 +2,7 @@
 App de experiências românticas criado por Lucas Moraes. Frontend estático, autenticação e dados no Supabase, funções serverless no Netlify.
 
 ## Comportamento
-- Criar, editar, visualizar e publicar experiências é gratuito para usuários autenticados.
+- Criar, editar e visualizar experiências é gratuito para usuários autenticados; publicar/liberar uma experiência usa o produto `publish_experience` e o pagamento Pix configurado no ADM.
 - Links públicos existentes continuam abrindo sem login; experiências secretas, com senha, agendadas ou de contas bloqueadas mantêm suas proteções.
 - Baixar o QR simples ou personalizado exige uma liberação avulsa por experiência. O preço inicial de cada opção é R$ 6,99; o administrador principal pode ajustar os produtos em Admin > Preços e acesso.
 - O código de cortesia `AMORIA1` pode liberar até três downloads por usuário, combinando QR simples e personalizado. O código é aplicado no checkout e não concede acesso automaticamente.
@@ -12,11 +12,12 @@ App de experiências românticas criado por Lucas Moraes. Frontend estático, au
 ## Atualizar uma instalação existente
 1. Faça backup do banco antes de aplicar migrações.
 2. No Supabase SQL Editor, execute `supabase/free-experiences-qr-addon.sql` se ainda não tiver sido aplicada.
-3. Execute `supabase/payments-pix-module.sql` e, em seguida, `supabase/catalog-access-module.sql`. Os módulos são incrementais e preservam experiências e histórico; o catálogo mantém a publicação gratuita, cria os produtos de download, configura `AMORIA1` e substitui a concessão manual de cortesias pelo resgate de códigos.
-4. Preserve a configuração de vídeos existente. Se ainda não foi habilitada, execute uma vez `supabase/video-support.sql`.
-5. Faça deploy do código atualizado no Netlify sem recriar o projeto Supabase.
-6. Confira Authentication > URL Configuration e mantenha o domínio publicado em Site URL e Redirect URLs.
-7. Em `config.js`, configure a URL do projeto e a chave `anon public` do Supabase. Essa chave é pública por projeto; nunca use a service-role key no frontend.
+3. Execute `supabase/catalog-access-module.sql` e depois `supabase/payments-pix-module.sql`. O catálogo cria os produtos, pedidos, cupons e direitos de acesso; o módulo de pagamentos adiciona a configuração privada do Pix, confirmação manual e relatórios.
+4. Se a instalação já passou por versões antigas de pagamento, execute `supabase/pix-direct-only-migration.sql` depois dos dois módulos acima para garantir Pix direto como único método e preservar o WhatsApp configurado.
+5. Preserve a configuração de vídeos existente. Se ainda não foi habilitada, execute uma vez `supabase/video-support.sql`.
+6. Faça deploy do código atualizado no Netlify sem recriar o projeto Supabase.
+7. Confira Authentication > URL Configuration e mantenha o domínio publicado em Site URL e Redirect URLs.
+8. Em `config.js`, configure a URL do projeto e a chave `anon public` do Supabase. Essa chave é pública por projeto; nunca use a service-role key no frontend.
 
 Não execute `schema.sql` novamente em uma instalação existente. Para uma instalação nova, execute `supabase/schema.sql`, `supabase/free-experiences-qr-addon.sql`, `supabase/payments-pix-module.sql` e `supabase/catalog-access-module.sql`, nessa ordem. Execute `supabase/video-support.sql` quando o recurso de vídeo for necessário.
 
@@ -63,11 +64,11 @@ A migração `supabase/pix-direct-only-migration.sql` força `mp_enabled=false` 
 `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` e o endpoint `mp-webhook` não fazem parte do novo fluxo de pagamento. Remova as variáveis antigas do Netlify apenas depois de confirmar que nenhum outro componente do projeto as utiliza.
 
 ## Execução e validação local
-O site é estático; para testar rotas e service worker, sirva a raiz do repositório por HTTP. Login, publicação na nuvem e checkout exigem Supabase e as configurações Netlify acima. O fluxo de pagamento deve ser testado com credenciais e usuário comprador de teste do Mercado Pago; não use pagamentos reais como teste.
+O site é estático; para testar rotas e service worker, sirva a raiz do repositório por HTTP. Login, publicação na nuvem e checkout exigem Supabase e as configurações Netlify acima. O fluxo de pagamento deve ser testado com um usuário comprador de teste e a chave Pix configurada no ADM. Não use pagamentos reais para validar o sistema.
 
 Não há manifesto de dependências neste repositório. `node --check` pode verificar as funções Netlify; os testes abaixo verificam o JavaScript do editor e simulam as chamadas server-side. A configuração e o resultado de chamadas reais dependem das credenciais externas.
 
-Os testes de regressão sem dependências externas podem ser executados com `node --test tests/*.test.js`. As chamadas do Supabase e do Mercado Pago nesses testes são simuladas; validar uma cobrança real/sandbox ainda exige as credenciais e contas de teste configuradas acima. Não use pagamentos reais para testar.
+Os testes de regressão sem dependências externas podem ser executados com `node --test tests/*.test.js`. As chamadas do Supabase e do provedor Pix nesses testes são simuladas; validar uma cobrança real exige uma conta recebedora de teste e conferência manual do crédito. Não use pagamentos reais para testar.
 
 ## Recursos preservados
 - Autenticação por e-mail/senha, recuperação de senha, sessões Supabase e rotas públicas existentes.
