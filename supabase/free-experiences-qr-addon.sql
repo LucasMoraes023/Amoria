@@ -245,8 +245,8 @@ begin
     'experiences',(select count(*) from public.experiences),
     'views',(select coalesce(sum(views),0) from public.experiences),
     'views7',(select count(*) from public.experience_views where viewed_at>now()-interval '7 days'),
-    'paid',(select count(*) from public.payments where status='approved' and purpose='qr_custom'),
-    'revenue',(select coalesce(sum(amount_cents),0) from public.payments where status='approved' and purpose='qr_custom'));
+    'paid',(select count(*) from public.payments where status='approved' and product_code='qr_custom'),
+    'revenue',(select coalesce(sum(amount_cents),0) from public.payments where status='approved' and product_code='qr_custom'));
 end $$;
 create or replace function public.admin_users()
 returns table(id uuid,email text,name text,role text,plan text,blocked boolean,created_at timestamptz,exps bigint)
@@ -258,11 +258,11 @@ begin
     from public.profiles p join auth.users u on u.id=p.id order by p.created_at desc;
 end $$;
 create or replace function public.admin_experiences()
-returns table(id uuid,slug text,title text,type text,owner_email text,views int,created_at timestamptz,paid boolean)
-language plpgsql security definer set search_path=public as $$
+returns table(id uuid,slug text,title text,type text,owner_email text,views int,created_at timestamptz,paid boolean,qr_custom_paid boolean)
+language plpgsql security definer set search_path=public as $
 begin
   if not public.is_primary_admin() then raise exception 'forbidden'; end if;
-  return query select e.id,e.slug,e.title,e.type,u.email::text,e.views,e.created_at,e.qr_custom_paid
+  return query select e.id,e.slug,e.title,e.type,u.email::text,e.views,e.created_at,e.paid,e.qr_custom_paid
     from public.experiences e join auth.users u on u.id=e.owner order by e.created_at desc limit 200;
 end $$;
 create or replace function public.admin_set_user(uid uuid,p_blocked boolean default null,p_plan text default null)
