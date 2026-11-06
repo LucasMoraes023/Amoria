@@ -125,7 +125,7 @@ async function withTimeout(ms, fn) {
 }
 async function callAnthropic({ key, model, system, user, maxTokens, timeoutMs }) {
   return withTimeout(timeoutMs || 8500, async signal => {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', signal,
+    const r = await fetch((process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, '') + '/v1/messages', { method: 'POST', signal,
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] }) });
     let j = null; try { j = await r.json(); } catch { j = null; }
@@ -137,7 +137,7 @@ async function callAnthropic({ key, model, system, user, maxTokens, timeoutMs })
 }
 async function callOpenAIImage({ key, model, prompt, size, timeoutMs }) {
   return withTimeout(timeoutMs || 120000, async signal => {
-    const r = await fetch('https://api.openai.com/v1/images/generations', { method: 'POST', signal,
+    const r = await fetch((process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '') + '/images/generations', { method: 'POST', signal,
       headers: { Authorization: 'Bearer ' + key, 'content-type': 'application/json' }, body: JSON.stringify({ model, prompt, size, n: 1 }) });
     let j = null; try { j = await r.json(); } catch { j = null; }
     if (!r.ok) throw mapStatus(r.status);
