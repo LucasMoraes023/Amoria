@@ -75,3 +75,5 @@ Os testes de regressão sem dependências externas podem ser executados com `nod
 - Experiências, histórico de visitas, fotos, vídeos, músicas, temas, estatísticas e contas existentes.
 - Ferramenta de música e controles de usuários/experiências no painel administrativo.
 - O painel não simula indicadores: métricas e pagamentos são lidos do banco. Logs operacionais de Functions permanecem no painel Netlify; tentativas de autenticação ficam nos logs do Supabase.
+
+<!-- netlify-deploy-sync: 2026-11-06 -->
