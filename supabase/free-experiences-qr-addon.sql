@@ -199,7 +199,7 @@ returns table(id uuid,experience_id uuid,amount_cents integer,provider text,prov
 language plpgsql security definer set search_path=public as $$
 begin
   if not public.is_primary_admin() then raise exception 'forbidden'; end if;
-  return query select p.id,p.experience_id,p.amount_cents,p.provider,p.provider_ref,p.purpose,p.status,p.created_at,p.paid_at
+  return query select p.id,p.experience_id,p.amount_cents,p.provider,p.provider_ref,coalesce(p.product_code,p.purpose),p.status,p.created_at,p.paid_at
     from public.payments p order by p.created_at desc limit 500;
 end $$;
 create or replace function public.admin_audit_log()
