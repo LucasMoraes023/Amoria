@@ -28,7 +28,9 @@ exports.handler = async ev => {
     if (!u) return R(401, { error: 'Faça login' });
     let body = {};
     try { body = JSON.parse(ev.body || '{}'); } catch {}
+    const customerEmail = String(body.customer_email || '').trim().toLowerCase();
     const product = body.product || 'qr_custom', def = PRODUCTS[product];
+    if (body.action !== 'status' && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(customerEmail)) return R(422, { error: 'Informe um e-mail válido para continuar.' });
     if (!def) return R(400, { error: 'Produto inválido' });
     const expId = body.expId;
     let exp = null;
@@ -78,9 +80,15 @@ exports.handler = async ev => {
       else payment = (await rows(await sb(`payments?id=eq.${made.order.order_id}&select=id,provider,amount_cents,status,coupon_code`)))[0];
     }
     if (!payment) return R(409, { error: 'Já existe um pedido em andamento. Tente novamente.' });
-    if (free) return R(200, { paid: await entitled(), free: true, orderId: payment.id });
+    if (customerEmail) {
+      await sb('payments?id=eq.' + encodeURIComponent(payment.id), {
+        method: 'PATCH',
+        body: JSON.stringify({ payer_email: customerEmail, updated_at: new Date().toISOString() })
+      });
+    }
+    if (free) return R(200, { paid: await entitled(), free: true, orderId: payment.id, customer_email: customerEmail });
     const code = buildPixPayload({ key: cfg.key, name: cfg.display_name || cfg.holder, city: cfg.city, amountCents: payment.amount_cents, txid: 'AMR' + payment.id.replace(/-/g, '').slice(0, 22) });
-    return R(200, { orderId: payment.id, amount: payment.amount_cents, original: q.original_cents, discount: q.discount_cents, coupon: q.coupon_code || null, product: q.product_name, method: 'pix_manual', status: payment.status, code, recipient: cfg.whatsapp || '', bank: cfg.bank || '', instructions: cfg.instructions || '', manual_confirmation: true, recipient_name: cfg.display_name || cfg.holder, customer_email: u.email || '' });
+    return R(200, { orderId: payment.id, amount: payment.amount_cents, original: q.original_cents, discount: q.discount_cents, coupon: q.coupon_code || null, product: q.product_name, method: 'pix_manual', status: payment.status, code, recipient: cfg.whatsapp || '', bank: cfg.bank || '', instructions: cfg.instructions || '', manual_confirmation: true, recipient_name: cfg.display_name || cfg.holder, customer_email: customerEmail });
   } catch (err) {
     console.error('[create-payment] failed:', err.message || 'unknown');
     return R(500, { error: 'Falha ao gerar o Pix' });
