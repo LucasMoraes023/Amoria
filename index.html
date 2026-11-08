@@ -231,6 +231,85 @@ header .lnk{margin:0;font-size:.85rem}
 .amoria-mark text{font-style:normal}
 @media(max-width:560px){.amoria-mark{width:128px}}
 
+
+/* AMORIA NOVO DESIGN MOBILE — camada visual, sem alterar a lógica existente */
+:root{
+  --am-bg:#080306;--am-panel:#12070d;--am-panel2:#190a12;--am-wine:#641633;
+  --am-wine2:#8d2950;--am-gold:#e5b45f;--am-gold2:#f0cf8a;--am-text:#fff8f7;
+  --am-muted:#bda7ae;--am-line:rgba(255,255,255,.085)
+}
+body{background:radial-gradient(circle at 50% -20%,#35111f 0,#0a0407 43%,#070306 100%);color:var(--am-text)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:
+ radial-gradient(circle at 15% 20%,rgba(150,35,77,.12),transparent 28%),
+ radial-gradient(circle at 90% 65%,rgba(214,164,68,.08),transparent 24%)}
+header{background:rgba(8,3,6,.76)!important;backdrop-filter:blur(20px)!important;border-bottom:1px solid rgba(255,255,255,.07)!important}
+header .logo,.logo{font-family:Georgia,serif!important;letter-spacing:4px!important}
+header nav a{font-size:11px!important}
+.wrap{max-width:680px}
+.landing{min-height:100svh!important;background:
+ radial-gradient(circle at 50% 20%,rgba(117,24,61,.23),transparent 35%),
+ linear-gradient(180deg,#0b0408 0%,#10050c 55%,#080306 100%)!important;
+ padding:96px 18px 70px!important;overflow:hidden}
+.landing-copy{max-width:620px!important}
+.landing .brand-mark{font-family:Georgia,serif!important;letter-spacing:7px!important;font-size:20px!important;color:#fff!important;text-shadow:0 0 35px rgba(228,180,95,.16)}
+.landing h1{font-family:Georgia,serif!important;font-weight:500!important;letter-spacing:-1.5px!important;text-shadow:0 12px 45px rgba(0,0,0,.45)}
+.landing h1 em{color:var(--am-gold)!important}
+.landing-copy>p{color:var(--am-muted)!important;font-size:14px!important;line-height:1.75!important}
+.landing-cta{background:linear-gradient(135deg,var(--am-gold),#f3c978)!important;color:#200910!important;border-radius:999px!important;box-shadow:0 16px 55px rgba(222,167,77,.24)!important}
+.memory-scene{filter:drop-shadow(0 25px 55px rgba(0,0,0,.45));}
+.photo-card{border-color:rgba(228,180,95,.35)!important;background:linear-gradient(145deg,#1b0811,#0d0408)!important;box-shadow:0 30px 80px rgba(0,0,0,.5)!important}
+.photo-art{background:linear-gradient(145deg,#54152e,#9b345b)!important}
+.landing-features{background:linear-gradient(180deg,rgba(255,255,255,.012),rgba(0,0,0,.1))!important;border-top:1px solid rgba(255,255,255,.05)}
+.landing-features h2{font-family:Georgia,serif!important;font-weight:500!important}
+.landing-features h2 em{color:var(--am-gold)!important}
+.feature{background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012))!important;border-color:var(--am-line)!important;border-radius:22px!important}
+.feature:hover{border-color:rgba(228,180,95,.35)!important}
+.final-cta{border-top-color:rgba(228,180,95,.18)!important}
+.steps{height:4px!important;background:rgba(255,255,255,.07)!important;border-radius:999px!important;display:flex!important;gap:3px!important;overflow:hidden!important;margin:0 0 18px!important}
+.steps i{height:100%!important;flex:1!important;background:rgba(255,255,255,.09)!important;border-radius:999px!important}
+.steps i.on{background:linear-gradient(90deg,var(--am-gold),#d76b86)!important}
+#app>.wrap{padding-top:18px}
+#app>.wrap>p.mu{font-size:9px!important;letter-spacing:1.2px!important;text-transform:uppercase!important;color:#9f858e!important;margin:0 0 8px!important}
+#app>.wrap>h2{font-family:Georgia,serif!important;font-size:clamp(30px,8vw,42px)!important;line-height:1.03!important;font-weight:500!important;margin:8px 0 10px!important}
+#app>.wrap>h2+*{margin-top:0}
+#editor-actions{position:sticky!important;bottom:0!important;z-index:15!important;margin:26px -18px -18px!important;padding:12px 18px calc(12px + env(safe-area-inset-bottom))!important;background:linear-gradient(180deg,rgba(8,3,6,0),rgba(8,3,6,.95) 25%)!important;backdrop-filter:blur(16px)!important}
+#editor-actions .btn{min-height:46px!important;border-radius:999px!important;flex:1!important}
+#editor-actions .btn:not(.ghost){background:linear-gradient(135deg,var(--am-gold),#f0c875)!important;color:#210a10!important;box-shadow:0 12px 30px rgba(222,167,77,.16)!important}
+#editor-actions .ghost{background:#180a12!important;border:1px solid var(--am-line)!important;color:#e4d5da!important}
+#app .grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important}
+#app .opt{min-height:112px!important;border:1px solid var(--am-line)!important;border-radius:19px!important;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012))!important;color:var(--am-text)!important;padding:15px!important;text-align:left!important;transition:.18s!important}
+#app .opt.on{border-color:rgba(228,180,95,.72)!important;box-shadow:0 0 0 1px rgba(228,180,95,.12),0 18px 45px rgba(0,0,0,.22)!important;background:linear-gradient(145deg,rgba(115,27,58,.34),rgba(255,255,255,.025))!important}
+#app .opt b{font-size:16px!important;display:block!important;margin-bottom:5px!important;font-family:Georgia,serif!important}
+#app .opt small{display:block!important;color:var(--am-muted)!important;font-size:9px!important;line-height:1.5!important;margin-top:5px!important}
+#app label{font-size:9px!important;letter-spacing:1.4px!important;color:#d8c4ca!important}
+#app input,#app textarea,#app select{background:#160911!important;border:1px solid var(--am-line)!important;border-radius:16px!important;color:#fff!important;padding:14px!important;box-shadow:none!important}
+#app input:focus,#app textarea:focus,#app select:focus{border-color:rgba(228,180,95,.55)!important;outline:none!important}
+#app textarea{min-height:150px!important}
+#app .drop{border:1.5px dashed rgba(228,180,95,.4)!important;background:rgba(228,180,95,.025)!important;border-radius:21px!important;padding:27px 16px!important;display:block!important;text-align:center!important}
+#app .ph{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+#app .ph figure{border-radius:15px!important;overflow:hidden!important;border:1px solid var(--am-line)!important;background:#170811!important}
+#app .ph figure img{width:100%!important;aspect-ratio:1!important;object-fit:cover!important}
+#app .row{gap:8px!important;flex-wrap:wrap}
+#app .row>.btn,#app .row>.sm{border-radius:999px!important}
+#app .sm{background:#180a12!important;border:1px solid var(--am-line)!important;color:#e4d5da!important;padding:9px 11px!important}
+#app .card{background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012))!important;border:1px solid var(--am-line)!important;border-radius:21px!important}
+#app .mu{color:var(--am-muted)!important;line-height:1.65!important}
+#app .qr{background:#13070d!important;border:1px solid rgba(228,180,95,.25)!important;border-radius:24px!important;padding:20px!important}
+#app .qr-tools{background:linear-gradient(145deg,#1b0811,#0e0408)!important;border:1px solid rgba(228,180,95,.22)!important;border-radius:22px!important;padding:18px!important}
+@media(max-width:560px){
+  .landing{padding-left:17px!important;padding-right:17px!important}
+  .landing h1{font-size:clamp(45px,13vw,64px)!important}
+  .landing-copy>p{max-width:390px}
+  .memory-scene{transform:scale(.94);transform-origin:center top;margin-top:-10px}
+  #app>.wrap{padding-left:18px;padding-right:18px}
+  #app .grid{grid-template-columns:1fr 1fr!important}
+  #editor-actions{margin-left:-18px!important;margin-right:-18px!important}
+}
+@media(min-width:800px){
+  #app>.wrap{max-width:720px}
+  #editor-actions{margin-left:-28px!important;margin-right:-28px!important;padding-left:28px!important;padding-right:28px!important}
+}
+
 </style>
 </head>
 <body>
@@ -470,8 +549,7 @@ const ST=[
 ['Tema',()=>opts('theme',Object.entries(TH).filter(([k])=>!SB||(TS[k]||{}).on!==false).map(([k,t])=>[k,t.p,t.n,`background:${t.b};color:${t.f}`]))+`<label>Animações<select data-k="fx">${Object.entries(FX).map(([k,v])=>`<option value="${k}"${D.fx===k?' selected':''}>${v[0]}</option>`).join('')}</select></label><p class="mu">Quem ativou "reduzir movimento" no aparelho não vê animações.</p>`],
 ['Acesso',()=>opts('priv',[['public','🌍','Público'],['password','🔐','Com senha']])+`<p class="mu">${PH[D.priv]}</p>`+(D.priv==='password'?inp('Senha da carta secreta','pass',{m:40}):'')+`<label>Só abrir a partir de (opcional)<input type="datetime-local" data-k="at" value="${esc(D.at)}"></label><p class="mu">Antes do horário o destinatário vê a contagem regressiva.</p><h3>📷 Como você quer o QR Code?</h3><p class="mu">Escolha agora. O QR simples é liberado junto com a experiência. O QR personalizado abre o Estúdio novo depois do pagamento.</p>${opts('qrCustom',[['false','◻️','QR simples'],['true','🎨','QR personalizado']],D.qrCustom?'true':'false')}<div class="card" style="margin:.8rem 0"><b>${D.qrCustom?'🎨 QR personalizado selecionado':'📷 QR simples selecionado'}</b><p class="mu">${D.qrCustom?'Você poderá criar uma arte completa no Estúdio, com foto de fundo, QR no canto, textos, cores, molduras e efeitos.':'Você receberá o QR Code normal, pronto para baixar e compartilhar.'}</p>${D.qrCustom?'<button class="btn" id="qr-studio-open" data-a="qr-studio-open">🎨 Abrir Estúdio profissional</button>':''}</div>${qrEditor()}<div class="row c"><button class="btn big" data-a="pub">SALVAR E IR PARA O PAGAMENTO ❤️</button></div><p class="mu c">Sua experiência fica salva com segurança nesta sessão. O link e o QR só aparecem depois da confirmação do pagamento.</p>`]
 ];
-async function editor(){if(!U&&SB){const a=await SB.auth.signInAnonymously();if(a.error){app.innerHTML='<div class="wrap c"><h2>Não foi possível iniciar o AMORIA</h2><p class="mu">Tente novamente em alguns segundos.</p><button class="btn" data-a="new">Tentar novamente</button></div>';return}U=a.data.user;nav()}if(!U){app.innerHTML='<div class="wrap c"><h2>AMORIA</h2><p class="mu">Não foi possível iniciar a criação agora.</p><button class="btn" data-a="new">Tentar novamente</button></div>';return}app.innerHTML=`<div class="wrap"><div class="steps" aria-hidden="true">${ST.map((s,i)=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div><p class="mu">Etapa ${step+1} de ${ST.length}</p><h2 tabindex="-1">${ST[step][0]}</h2>${ST[step][1]()}<div class="row" id="editor-actions">${step?'<button class="btn ghost" data-a="go:-1">Voltar</button>':''}<button class="btn ghost" data-a="prev">Pré-visualizar</button>${step<ST.length-1?'<button class="btn" data-a="go:1">Continuar</button>':''}</div></div>`;drawQrPreview()}
-const bmp=f=>window.createImageBitmap?createImageBitmap(f):new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(f)});
+async function editor(){if(!U&&SB){const a=await SB.auth.signInAnonymously();if(a.error){app.innerHTML='<div class="wrap c"><h2>Não foi possível iniciar o AMORIA</h2><p class="mu">Tente novamente em alguns segundos.</p><button class="btn" data-a="new">Tentar novamente</button></div>';return}U=a.data.user;nav()}if(!U){app.innerHTML='<div class="wrap c"><h2>AMORIA</h2><p class="mu">Não foi possível iniciar a criação agora.</p><button class="btn" data-a="new">Tentar novamente</button></div>';return}app.innerHTML=`<div class="wrap"><div class="steps" aria-hidden="true">${ST.map((s,i)=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div><p class="mu">Etapa ${step+1} de ${ST.length}</p><h2 tabindex="-1">${ST[step][0]}</h2><div class="studio-step">${ST[step][1]()}</div><div class="row" id="editor-actions">${step?'<button class="btn ghost" data-a="go:-1">Voltar</button>':''}<button class="btn ghost" data-a="prev">Pré-visualizar</button>${step<ST.length-1?'<button class="btn" data-a="go:1">Continuar</button>':''}</div></div>`;drawQrPreview()}const bmp=f=>window.createImageBitmap?createImageBitmap(f):new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(f)});
 async function addPhotos(fs){for(const f of fs){if(D.photos.length>=PLAN.fotos){toast(`Limite de ${PLAN.fotos} fotos por experiência atingido`);break}if(f.size>12e6){toast('Foto muito grande (máx. 12 MB)');continue}try{const b=await bmp(f),r=Math.min(1,900/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.round(b.width*r);c.height=Math.round(b.height*r);c.getContext('2d').drawImage(b,0,0,c.width,c.height);D.photos.push(c.toDataURL('image/jpeg',.72))}catch{toast('Não consegui ler essa imagem')}}editor()}
 const VIDEO_LIMIT=3,VIDEO_MAX_BYTES=25*1024*1024,VIDEO_TYPES=['video/mp4','video/webm'];
 function videoType(f){if(VIDEO_TYPES.includes(f.type))return f.type;const ext=(f.name.split('.').pop()||'').toLowerCase();return ext==='mp4'?'video/mp4':ext==='webm'?'video/webm':''}
